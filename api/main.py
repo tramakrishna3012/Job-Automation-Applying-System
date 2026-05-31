@@ -1,5 +1,5 @@
 import asyncio
-from fastapi import FastAPI, WebSocket, UploadFile, File, BackgroundTasks
+from fastapi import FastAPI, WebSocket, UploadFile, File, BackgroundTasks, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -82,8 +82,8 @@ active_state = {}
 @app.post("/api/onboard")
 async def onboard(
     background_tasks: BackgroundTasks,
-    target_role: str,
-    target_experience_level: str,
+    target_role: str = Form(...),
+    target_experience_level: str = Form(...),
     file: UploadFile = File(...)
 ):
     temp_pdf_path = f"temp_{file.filename}"
