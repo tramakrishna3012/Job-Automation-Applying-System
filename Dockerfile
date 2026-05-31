@@ -12,6 +12,9 @@ RUN npm ci
 # Copy rest of the frontend source
 COPY frontend/ ./
 
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_OPTIONS="--max-old-space-size=256"
+
 # Build Next.js app (outputs to /app/frontend/out because of next.config.ts export)
 RUN npm run build
 
