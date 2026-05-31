@@ -29,6 +29,10 @@ class OnboardingRequest(BaseModel):
     target_role: str
     target_experience_level: str
 
+@app.get("/")
+async def healthcheck():
+    return {"status": "ok", "service": "job-automation-api"}
+
 # In-memory store for demo (should be DB backed in prod)
 active_state = {}
 
