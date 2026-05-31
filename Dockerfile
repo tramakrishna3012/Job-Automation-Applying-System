@@ -28,6 +28,11 @@ FROM mcr.microsoft.com/playwright/python:v1.42.0-jammy
 # Set work directory
 WORKDIR /app
 
+# Set timezone to IST (Asia/Kolkata)
+ENV TZ="Asia/Kolkata"
+RUN apt-get update && apt-get install -y tzdata && \
+    ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
 # Install uv for fast package management
 RUN pip install uv
 
