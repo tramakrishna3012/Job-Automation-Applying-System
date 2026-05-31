@@ -1,0 +1,24 @@
+[project]
+name = "job-automation-applying-system"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "apscheduler>=3.11.2",
+    "google-api-python-client>=2.197.0",
+    "google-auth-httplib2>=0.4.0",
+    "google-auth-oauthlib>=1.4.0",
+    "langgraph>=1.2.2",
+    "openpyxl>=3.1.5",
+    "pandas>=2.3.3",
+    "pdfplumber>=0.11.9",
+    "playwright>=1.60.0",
+    "playwright-stealth>=2.0.3",
+    "pydantic>=2.13.4",
+    "pydantic-ai>=1.104.0",
+    "python-dotenv>=1.2.2",
+    "python-jobspy>=1.1.82",
+    "rendercv>=2.3",
+    "rich>=15.0.0",
+]
