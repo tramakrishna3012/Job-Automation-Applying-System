@@ -119,6 +119,7 @@ def run_scout(state: ApplicationState) -> ApplicationState:
     
     # We want 100 jobs. JobSpy can fetch chunks.
     console.print(f"Scraping jobs for: {search_term}...")
+    log_telemetry("Scout", f"Initiating job search for: {search_term}")
     
     jobs_df = scrape_jobs(
         site_name=["linkedin", "indeed", "glassdoor"],
@@ -134,6 +135,7 @@ def run_scout(state: ApplicationState) -> ApplicationState:
         return state
         
     console.print(f"[green]Found {len(jobs_df)} jobs. Enriching...[/green]")
+    log_telemetry("Scout", f"Discovered {len(jobs_df)} raw job matches. Enriching data...")
     
     # Convert dataframe to JobMatch objects
     queued_jobs = []
@@ -153,4 +155,5 @@ def run_scout(state: ApplicationState) -> ApplicationState:
     
     state["daily_job_queue"] = enriched_jobs
     console.print(f"[bold green]Scout Phase Complete. {len(enriched_jobs)} jobs added to queue.[/bold green]")
+    log_telemetry("Scout", f"Scout Phase Complete. {len(enriched_jobs)} high-quality jobs added to queue.")
     return state

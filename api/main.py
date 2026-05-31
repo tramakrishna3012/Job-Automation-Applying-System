@@ -138,6 +138,8 @@ async def start_agents(background_tasks: BackgroundTasks):
     state = active_state["current"]
     
     def run_graph():
+        from core.db import log_telemetry
+        log_telemetry("System", f"Agent Zero initialized. Target role: {state.get('target_role')}. Beginning automated workflow...")
         graph_app.invoke(state)
         
     background_tasks.add_task(run_graph)
