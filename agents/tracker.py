@@ -5,7 +5,7 @@ from rich.console import Console
 
 from core.config import GEMINI_API_KEY
 from core.state import ApplicationState
-from core.supabase_client import supabase
+from core.db import get_db_connection
 
 console = Console()
 
@@ -45,11 +45,17 @@ async def check_inbox_and_classify(state: ApplicationState):
         console.print(f"[green]Detected intent for {simulated_email['company']}: {intent}[/green]")
         
         try:
-            if supabase:
-                data, count = supabase.table("job_applications").update({"status": intent}).eq("company", simulated_email["company"]).execute()
+            conn = get_db_connection()
+            if conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "UPDATE job_applications SET status = %s WHERE company = %s",
+                        (intent, simulated_email['company'])
+                    )
                 console.print(f"[green]Dashboard updated for {simulated_email['company']}[/green]")
+                conn.close()
             else:
-                console.print("[yellow]Supabase not configured. Skipping dashboard update.[/yellow]")
+                console.print("[yellow]Neon DB not configured. Skipping dashboard update.[/yellow]")
         except Exception as e:
             console.print(f"[red]Failed to update dashboard from tracker: {e}[/red]")
             
