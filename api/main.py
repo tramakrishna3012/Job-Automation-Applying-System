@@ -108,7 +108,7 @@ async def onboard(
             pass
                     
         result = await extraction_agent.run(f"Resume Text:\n{resume_text}")
-        user_profile = result.data
+        user_profile = result.output
         
         # Store in memory for now
         active_state["current"] = {
