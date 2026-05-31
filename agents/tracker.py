@@ -1,11 +1,11 @@
 import asyncio
-import pandas as pd
 from pydantic_ai import Agent
 from pydantic_ai.models.gemini import GeminiModel
 from rich.console import Console
 
 from core.config import GEMINI_API_KEY
 from core.state import ApplicationState
+from core.supabase_client import supabase
 
 console = Console()
 
@@ -44,15 +44,12 @@ async def check_inbox_and_classify(state: ApplicationState):
         intent = result.data
         console.print(f"[green]Detected intent for {simulated_email['company']}: {intent}[/green]")
         
-        # Update Excel
         try:
-            df = pd.read_excel(dashboard_path)
-            # Find the row for the company and update status
-            mask = df['Company'] == simulated_email['company']
-            if mask.any():
-                df.loc[mask, 'Status'] = intent
-                df.to_excel(dashboard_path, index=False)
+            if supabase:
+                data, count = supabase.table("job_applications").update({"status": intent}).eq("company", simulated_email["company"]).execute()
                 console.print(f"[green]Dashboard updated for {simulated_email['company']}[/green]")
+            else:
+                console.print("[yellow]Supabase not configured. Skipping dashboard update.[/yellow]")
         except Exception as e:
             console.print(f"[red]Failed to update dashboard from tracker: {e}[/red]")
             

@@ -8,30 +8,29 @@ from rich.console import Console
 
 from core.state import ApplicationState, JobMatch, UserProfile
 from core.config import WHATSAPP_ACCESS_TOKEN, WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_DESTINATION_NUMBER
+from core.supabase_client import supabase
 
 console = Console()
 
-def update_excel_dashboard(path: str, job: JobMatch, status: str):
-    """Appends application status to the Excel dashboard."""
+def update_supabase_dashboard(job: JobMatch, status: str):
+    """Appends application status to Supabase dashboard."""
+    if not supabase:
+        console.print("[yellow]Supabase not configured. Skipping DB update.[/yellow]")
+        return
+        
     new_row = {
-        "Date": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
-        "Company": job.company,
-        "Role": job.title,
-        "URL": job.url,
-        "Status": status
+        "date_applied": datetime.datetime.now().isoformat(),
+        "company": job.company,
+        "role": job.title,
+        "url": job.url,
+        "status": status
     }
     
     try:
-        if os.path.exists(path):
-            df = pd.read_excel(path)
-            df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-        else:
-            df = pd.DataFrame([new_row])
-            
-        df.to_excel(path, index=False)
-        console.print(f"[green]Dashboard updated: {status} for {job.company}[/green]")
+        data, count = supabase.table("job_applications").insert(new_row).execute()
+        console.print(f"[green]Supabase updated: {status} for {job.company}[/green]")
     except Exception as e:
-        console.print(f"[red]Failed to update Excel dashboard: {e}[/red]")
+        console.print(f"[red]Failed to update Supabase dashboard: {e}[/red]")
 
 def send_whatsapp_notification(job: JobMatch):
     """Sends a WhatsApp message via WhatsApp Cloud API."""
@@ -133,10 +132,10 @@ async def process_applications(state: ApplicationState) -> ApplicationState:
             
             if success:
                 state["application_count"] += 1
-                update_excel_dashboard(dashboard_path, job, "Applied")
+                update_supabase_dashboard(job, "Applied")
                 send_whatsapp_notification(job)
             else:
-                update_excel_dashboard(dashboard_path, job, "Failed Auto-Apply")
+                update_supabase_dashboard(job, "Failed Auto-Apply")
                 
             await page.close()
             await asyncio.sleep(1) # Be nice to servers
