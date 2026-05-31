@@ -33,11 +33,9 @@ RUN pip install uv
 
 # Copy backend dependencies
 COPY pyproject.toml uv.lock ./
-# Alternatively, since we have requirements.txt:
-COPY requirements.txt ./
 
-# Install backend dependencies
-RUN uv pip install --system -r requirements.txt
+# Install backend dependencies directly from pyproject to avoid cross-platform issues
+RUN uv pip install --system -r pyproject.toml
 
 # We explicitly install Playwright browsers in case the image doesn't cover it
 RUN uv run playwright install chromium
