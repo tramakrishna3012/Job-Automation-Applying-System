@@ -13,7 +13,7 @@ from rich.console import Console
 console = Console()
 
 # We configure Pydantic AI for Resume Tailoring
-model = GeminiModel("gemini-2.5-pro")
+model = GeminiModel("gemini-1.5-pro")
 editor_agent = Agent(
     model,
     output_type=TailoredResume,

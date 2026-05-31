@@ -11,7 +11,7 @@ from core.config import GEMINI_API_KEY
 console = Console()
 
 # We configure Pydantic AI to use Gemini
-model = GeminiModel("gemini-2.5-pro")
+model = GeminiModel("gemini-1.5-pro")
 extraction_agent = Agent(
     model,
     output_type=UserProfile,
