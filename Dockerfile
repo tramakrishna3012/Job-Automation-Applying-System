@@ -42,8 +42,8 @@ COPY pyproject.toml uv.lock ./
 # Install backend dependencies directly from pyproject to avoid cross-platform issues
 RUN uv pip install --system -r pyproject.toml
 
-# We explicitly install Playwright browsers in case the image doesn't cover it
-RUN uv run playwright install chromium
+# Browsers are already included in the mcr.microsoft.com/playwright/python base image.
+# Skipping playwright install to drastically speed up the build.
 
 # Copy backend project files
 COPY . .
