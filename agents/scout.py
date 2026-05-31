@@ -16,7 +16,7 @@ console = Console()
 model = GeminiModel("gemini-2.5-flash")
 jd_extractor_agent = Agent(
     model,
-    result_type=str,
+    output_type=str,
     system_prompt=(
         "Extract the raw job description text from the following HTML body text. "
         "Remove navigation, footers, headers, and only return the core job responsibilities, "

@@ -15,7 +15,7 @@ console = Console()
 model = GeminiModel("gemini-2.5-flash")
 editor_agent = Agent(
     model,
-    result_type=TailoredResume,
+    output_type=TailoredResume,
     system_prompt=(
         "You are an expert resume editor and career coach. "
         "Your task is to tailor a master UserProfile to perfectly match a specific Job Description. "

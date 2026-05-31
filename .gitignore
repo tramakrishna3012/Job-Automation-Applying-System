@@ -1,2 +1,33 @@
 /.kilocode
 /Architecture and Implementation Blueprint for an Autonomous Job Application Agent System.pdf
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.venv/
+env/
+venv/
+ENV/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Next.js / Node
+frontend/.next/
+frontend/node_modules/
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# OS / Tooling
+.DS_Store
+.idea/
+.vscode/
+*.log
+temp_*

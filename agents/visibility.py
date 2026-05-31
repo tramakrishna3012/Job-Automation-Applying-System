@@ -16,7 +16,7 @@ console = Console()
 model = GeminiModel("gemini-2.5-flash")
 post_agent = Agent(
     model,
-    result_type=str,
+    output_type=str,
     system_prompt=(
         "You are an expert tech influencer. Generate a highly engaging, professional LinkedIn post "
         "about current IT/AI trends or a recent project. Keep it under 150 words, include 3 relevant hashtags, "

@@ -23,5 +23,5 @@ COPY . .
 ENV PORT=8000
 EXPOSE 8000
 
-# Run the FastAPI server
-CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run the FastAPI server using sh to correctly expand the PORT environment variable
+CMD ["sh", "-c", "uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

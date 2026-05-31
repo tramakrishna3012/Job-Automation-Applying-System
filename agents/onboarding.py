@@ -14,7 +14,7 @@ console = Console()
 model = GeminiModel("gemini-2.5-flash")
 extraction_agent = Agent(
     model,
-    result_type=UserProfile,
+    output_type=UserProfile,
     system_prompt=(
         "You are an expert resume parser. "
         "Extract the user's details from the provided resume text and map them exactly to the UserProfile schema. "

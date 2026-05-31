@@ -13,7 +13,7 @@ console = Console()
 model = GeminiModel("gemini-2.5-flash")
 intent_agent = Agent(
     model,
-    result_type=str,
+    output_type=str,
     system_prompt=(
         "Classify the intent of the following HR email response into one of three categories: "
         "'Interview', 'Rejected', or 'Interested'. "
