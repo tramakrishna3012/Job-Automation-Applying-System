@@ -1,6 +1,9 @@
 import asyncio
 from pydantic_ai import Agent
 from pydantic_ai.models.gemini import GeminiModel
+from pydantic_ai.models.groq import GroqModel
+from pydantic_ai.models.ollama import OllamaModel
+from pydantic_ai.models.fallback import FallbackModel
 from rich.console import Console
 
 from core.config import GEMINI_API_KEY
@@ -10,7 +13,10 @@ from core.db import get_db_connection
 console = Console()
 
 # Intent Classification Agent
-model = GeminiModel("gemini-1.5-pro")
+gemini_model = GeminiModel("gemini-1.5-pro")
+groq_model = GroqModel("llama-3.3-70b-versatile")
+ollama_model = OllamaModel("llama3.2")
+model = FallbackModel(gemini_model, groq_model, ollama_model)
 intent_agent = Agent(
     model,
     output_type=str,
