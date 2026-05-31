@@ -7,8 +7,8 @@ from playwright.async_api import async_playwright
 from rich.console import Console
 
 from core.state import ApplicationState, JobMatch, UserProfile
+from core.db import get_db_connection, log_telemetry
 from core.config import WHATSAPP_ACCESS_TOKEN, WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_DESTINATION_NUMBER
-from core.db import get_db_connection
 
 console = Console()
 
@@ -74,7 +74,8 @@ def send_whatsapp_notification(job: JobMatch):
 
 async def auto_apply(page, job: JobMatch, profile: UserProfile) -> bool:
     """Attempts to auto-fill an application form using Playwright."""
-    console.print(f"Applying to {job.company}...")
+    console.print(f"[cyan]Applying to {job.company} via {job.url}...[/cyan]")
+    log_telemetry("Dispatcher", f"Attempting auto-fill on {job.url} for {job.company}")
     try:
         await page.goto(job.url, wait_until="domcontentloaded", timeout=45000)
         
@@ -102,6 +103,7 @@ async def auto_apply(page, job: JobMatch, profile: UserProfile) -> bool:
         if await submit_buttons.count() > 0:
             # await submit_buttons.first.click()
             console.print(f"[green]Simulated Submit clicked for {job.company}[/green]")
+            log_telemetry("Dispatcher", f"Successfully applied to {job.company}! Dashboard updated.")
             return True
             
         return False

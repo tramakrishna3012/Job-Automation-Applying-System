@@ -32,6 +32,14 @@ def init_db():
                         status TEXT
                     )
                 """)
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS agent_logs (
+                        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+                        timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                        agent_name TEXT NOT NULL,
+                        message TEXT NOT NULL
+                    )
+                """)
             console.print("[green]Neon DB initialized successfully.[/green]")
         except Exception as e:
             console.print(f"[red]Failed to initialize schema: {e}[/red]")
@@ -40,3 +48,17 @@ def init_db():
 
 # Initialize schema on load
 init_db()
+
+def log_telemetry(agent_name: str, message: str):
+    conn = get_db_connection()
+    if conn:
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "INSERT INTO agent_logs (agent_name, message) VALUES (%s, %s)",
+                    (agent_name, message)
+                )
+        except Exception as e:
+            console.print(f"[red]Failed to insert telemetry: {e}[/red]")
+        finally:
+            conn.close()

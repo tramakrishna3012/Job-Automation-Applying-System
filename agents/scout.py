@@ -4,6 +4,7 @@ from jobspy import scrape_jobs
 from playwright.async_api import async_playwright
 from bs4 import BeautifulSoup
 from pydantic_ai import Agent
+from core.db import get_db_connection, log_telemetry
 from pydantic_ai.models.gemini import GeminiModel
 
 from core.state import ApplicationState, JobMatch

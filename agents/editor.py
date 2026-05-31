@@ -6,6 +6,7 @@ from pydantic_ai.models.gemini import GeminiModel
 import subprocess
 
 from core.state import ApplicationState, TailoredResume, UserProfile, JobMatch
+from core.db import log_telemetry
 from core.config import GEMINI_API_KEY
 from rich.console import Console
 
@@ -79,6 +80,7 @@ async def tailor_for_job(job: JobMatch, profile: UserProfile) -> JobMatch:
         return job
         
     console.print(f"Tailoring resume for {job.company} - {job.title}...")
+    log_telemetry("Editor", f"Tailoring Master Resume for {job.company} using Gemini-2.5-Flash")
     
     prompt = f"""
     Master Profile:

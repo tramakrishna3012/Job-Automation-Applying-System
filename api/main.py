@@ -10,6 +10,7 @@ from contextlib import asynccontextmanager
 from core.graph import app as graph_app
 from core.state import ApplicationState
 from agents.onboarding import extraction_agent
+from core.db import get_db_connection
 import pdfplumber
 import os
 
@@ -34,6 +35,46 @@ class OnboardingRequest(BaseModel):
 @app.get("/api/health")
 async def healthcheck():
     return {"status": "ok", "service": "job-automation-api"}
+
+@app.get("/api/stats")
+async def get_stats():
+    conn = get_db_connection()
+    if not conn:
+        return {"discovered": 0, "applied": 0, "interviews": 0}
+        
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT COUNT(*) as discovered FROM job_applications")
+            discovered = cur.fetchone()['discovered']
+            
+            cur.execute("SELECT COUNT(*) as applied FROM job_applications WHERE status = 'applied'")
+            applied = cur.fetchone()['applied']
+            
+            cur.execute("SELECT COUNT(*) as interviews FROM job_applications WHERE status = 'Interview'")
+            interviews = cur.fetchone()['interviews']
+            
+        return {"discovered": discovered, "applied": applied, "interviews": interviews}
+    except Exception as e:
+        return {"error": str(e)}
+    finally:
+        conn.close()
+
+@app.get("/api/logs")
+async def get_logs():
+    conn = get_db_connection()
+    if not conn:
+        return {"logs": []}
+        
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT agent_name, message, timestamp FROM agent_logs ORDER BY timestamp DESC LIMIT 10")
+            rows = cur.fetchall()
+            logs = [{"agent": row['agent_name'], "message": row['message'], "time": row['timestamp'].isoformat()} for row in rows]
+        return {"logs": logs}
+    except Exception as e:
+        return {"error": str(e)}
+    finally:
+        conn.close()
 
 # In-memory store for demo (should be DB backed in prod)
 active_state = {}

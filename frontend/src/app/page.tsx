@@ -3,7 +3,7 @@
 import { Canvas, useFrame } from "@react-three/fiber";
 import { Sphere, MeshDistortMaterial } from "@react-three/drei";
 import { motion } from "framer-motion";
-import { useRef } from "react";
+import { useRef, useEffect, useState } from "react";
 import Link from "next/link";
 import { Briefcase, BrainCircuit, Rocket, CheckCircle } from "lucide-react";
 
@@ -32,6 +32,32 @@ function AICore() {
 }
 
 export default function Dashboard() {
+  const [stats, setStats] = useState({ discovered: 0, applied: 0, interviews: 0 });
+  const [logs, setLogs] = useState<{agent: string, message: string, time: string}[]>([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const statsRes = await fetch("/api/stats");
+        if (statsRes.ok) {
+          const statsData = await statsRes.json();
+          setStats(statsData);
+        }
+        const logsRes = await fetch("/api/logs");
+        if (logsRes.ok) {
+          const logsData = await logsRes.json();
+          setLogs(logsData.logs || []);
+        }
+      } catch (err) {
+        console.error("Failed to fetch dashboard data", err);
+      }
+    };
+    
+    fetchData();
+    const interval = setInterval(fetchData, 5000); // Poll every 5 seconds
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans relative overflow-hidden">
       {/* Background Gradients */}
@@ -79,17 +105,17 @@ export default function Dashboard() {
           <div className="grid grid-cols-3 gap-6">
             <div className="rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md p-6 flex flex-col items-center justify-center">
               <Briefcase className="w-8 h-8 text-cyan-400 mb-2" />
-              <span className="text-3xl font-bold">142</span>
+              <span className="text-3xl font-bold">{stats.discovered}</span>
               <span className="text-slate-400 text-sm">Jobs Discovered</span>
             </div>
             <div className="rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md p-6 flex flex-col items-center justify-center">
               <CheckCircle className="w-8 h-8 text-green-400 mb-2" />
-              <span className="text-3xl font-bold">87</span>
+              <span className="text-3xl font-bold">{stats.applied}</span>
               <span className="text-slate-400 text-sm">Auto-Applied</span>
             </div>
             <div className="rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md p-6 flex flex-col items-center justify-center">
               <BrainCircuit className="w-8 h-8 text-violet-400 mb-2" />
-              <span className="text-3xl font-bold">12</span>
+              <span className="text-3xl font-bold">{stats.interviews}</span>
               <span className="text-slate-400 text-sm">Interviews Tracked</span>
             </div>
           </div>
@@ -105,18 +131,17 @@ export default function Dashboard() {
             </h2>
             
             <div className="flex-1 overflow-y-auto pr-4 space-y-4 font-mono text-sm">
-              <motion.div initial={{opacity:0}} animate={{opacity:1}} className="p-4 rounded-lg bg-white/5 border border-white/5">
-                <span className="text-cyan-400">[Scout]</span> Discovered "Senior Frontend Engineer" at Vercel
-              </motion.div>
-              <motion.div initial={{opacity:0}} animate={{opacity:1}} transition={{delay: 0.1}} className="p-4 rounded-lg bg-white/5 border border-white/5">
-                <span className="text-violet-400">[Editor]</span> Tailoring Master Resume using Gemini-2.5-Flash
-              </motion.div>
-              <motion.div initial={{opacity:0}} animate={{opacity:1}} transition={{delay: 0.2}} className="p-4 rounded-lg bg-white/5 border border-white/5">
-                <span className="text-indigo-400">[Dispatcher]</span> Attempting auto-fill on Lever.co form...
-              </motion.div>
-              <motion.div initial={{opacity:0}} animate={{opacity:1}} transition={{delay: 0.3}} className="p-4 rounded-lg bg-white/5 border border-green-500/30">
-                <span className="text-green-400">[Dispatcher]</span> ✅ Successfully applied to Vercel! Dashboard updated.
-              </motion.div>
+              {logs.length === 0 ? (
+                <div className="text-slate-500 italic">Waiting for agent activity...</div>
+              ) : (
+                logs.map((log, idx) => (
+                  <motion.div key={idx} initial={{opacity:0}} animate={{opacity:1}} transition={{delay: idx * 0.05}} className="p-4 rounded-lg bg-white/5 border border-white/5">
+                    <span className={log.agent === "Scout" ? "text-cyan-400" : log.agent === "Editor" ? "text-violet-400" : "text-indigo-400"}>
+                      [{log.agent}]
+                    </span> {log.message}
+                  </motion.div>
+                ))
+              )}
             </div>
           </div>
         </motion.div>
