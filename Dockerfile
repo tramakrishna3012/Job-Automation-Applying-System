@@ -13,7 +13,8 @@ RUN npm ci
 COPY frontend/ ./
 
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV NODE_OPTIONS="--max-old-space-size=400"
+ENV DISABLE_ESLINT_PLUGIN=true
+ENV NODE_OPTIONS="--max-old-space-size=192"
 
 # Build Next.js app (outputs to /app/frontend/out because of next.config.ts export)
 RUN npm run build
