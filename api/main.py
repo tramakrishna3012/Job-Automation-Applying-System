@@ -1,6 +1,8 @@
 import asyncio
 from fastapi import FastAPI, WebSocket, UploadFile, File, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 import uvicorn
 from contextlib import asynccontextmanager
@@ -29,7 +31,7 @@ class OnboardingRequest(BaseModel):
     target_role: str
     target_experience_level: str
 
-@app.get("/")
+@app.get("/api/health")
 async def healthcheck():
     return {"status": "ok", "service": "job-automation-api"}
 
@@ -95,6 +97,10 @@ async def websocket_endpoint(websocket: WebSocket):
             await websocket.send_text(f"Message text was: {data}")
     except Exception:
         pass
+
+# Mount Next.js static export. Must be placed after API routes.
+if os.path.isdir("frontend/out"):
+    app.mount("/", StaticFiles(directory="frontend/out", html=True), name="static")
 
 if __name__ == "__main__":
     uvicorn.run("api.main:app", host="0.0.0.0", port=8000, reload=True)

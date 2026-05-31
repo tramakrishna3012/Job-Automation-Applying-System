@@ -1,4 +1,24 @@
-# Use official Python runtime as a parent image
+# ==========================================
+# Stage 1: Build the Next.js Frontend
+# ==========================================
+FROM node:20-alpine AS builder
+
+WORKDIR /app/frontend
+
+# Install dependencies (only copy what's needed for install to cache layer)
+COPY frontend/package*.json ./
+RUN npm ci
+
+# Copy rest of the frontend source
+COPY frontend/ ./
+
+# Build Next.js app (outputs to /app/frontend/out because of next.config.ts export)
+RUN npm run build
+
+
+# ==========================================
+# Stage 2: Build the FastAPI Backend
+# ==========================================
 FROM mcr.microsoft.com/playwright/python:v1.42.0-jammy
 
 # Set work directory
@@ -7,17 +27,22 @@ WORKDIR /app
 # Install uv for fast package management
 RUN pip install uv
 
-# Copy dependencies
-COPY requirements.txt .
+# Copy backend dependencies
+COPY pyproject.toml uv.lock ./
+# Alternatively, since we have requirements.txt:
+COPY requirements.txt ./
 
-# Install dependencies
+# Install backend dependencies
 RUN uv pip install --system -r requirements.txt
 
-# We explicitly install Playwright browsers in case the image doesn't cover the specific version required by playwright-stealth
+# We explicitly install Playwright browsers in case the image doesn't cover it
 RUN uv run playwright install chromium
 
-# Copy project files
+# Copy backend project files
 COPY . .
+
+# Copy the built static files from Stage 1
+COPY --from=builder /app/frontend/out /app/frontend/out
 
 # Expose port (Railway defaults to providing PORT env var)
 ENV PORT=8000
