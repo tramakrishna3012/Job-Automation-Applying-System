@@ -10,7 +10,7 @@ from core.db import get_db_connection
 console = Console()
 
 # Intent Classification Agent
-model = GeminiModel("gemini-2.5-flash")
+model = GeminiModel("gemini-2.5-pro")
 intent_agent = Agent(
     model,
     output_type=str,

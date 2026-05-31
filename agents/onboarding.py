@@ -11,7 +11,7 @@ from core.config import GEMINI_API_KEY
 console = Console()
 
 # We configure Pydantic AI to use Gemini
-model = GeminiModel("gemini-2.5-flash")
+model = GeminiModel("gemini-2.5-pro")
 extraction_agent = Agent(
     model,
     output_type=UserProfile,
@@ -52,7 +52,7 @@ async def run_onboarding() -> dict:
     try:
         # Pydantic AI Agent Run
         result = await extraction_agent.run(f"Resume Text:\n{resume_text}")
-        user_profile = result.data
+        user_profile = result.output
         console.print("[bold green]Profile successfully parsed![/bold green]")
     except Exception as e:
         console.print(f"[bold red]Failed to parse profile:[/] {e}")

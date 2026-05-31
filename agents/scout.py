@@ -14,7 +14,7 @@ from rich.console import Console
 console = Console()
 
 # We configure Pydantic AI for LLM fallback in job description extraction
-model = GeminiModel("gemini-2.5-flash")
+model = GeminiModel("gemini-2.5-pro")
 jd_extractor_agent = Agent(
     model,
     output_type=str,

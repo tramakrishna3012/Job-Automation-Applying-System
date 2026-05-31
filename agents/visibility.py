@@ -13,7 +13,7 @@ from core.config import GEMINI_API_KEY
 console = Console()
 
 # LinkedIn Post Generator Agent
-model = GeminiModel("gemini-2.5-flash")
+model = GeminiModel("gemini-2.5-pro")
 post_agent = Agent(
     model,
     output_type=str,
