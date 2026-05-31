@@ -36,7 +36,9 @@ export default function Onboarding() {
       });
 
       if (!res.ok) {
-        throw new Error("Failed to onboard. Please check backend logs.");
+        const errorData = await res.json().catch(() => ({}));
+        const backendMessage = errorData.detail || "Failed to onboard. Please check backend logs.";
+        throw new Error(backendMessage);
       }
 
       const data = await res.json();

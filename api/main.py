@@ -13,6 +13,7 @@ from agents.onboarding import extraction_agent
 from core.db import get_db_connection
 import pdfplumber
 import os
+import tempfile
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -86,32 +87,48 @@ async def onboard(
     target_experience_level: str = Form(...),
     file: UploadFile = File(...)
 ):
-    temp_pdf_path = f"temp_{file.filename}"
-    with open(temp_pdf_path, "wb") as f:
-        f.write(await file.read())
+    try:
+        # Save file securely
+        fd, temp_pdf_path = tempfile.mkstemp(suffix=".pdf")
+        os.close(fd)
+        with open(temp_pdf_path, "wb") as f:
+            f.write(await file.read())
+            
+        resume_text = ""
+        with pdfplumber.open(temp_pdf_path) as pdf:
+            for page in pdf.pages:
+                text = page.extract_text()
+                if text:
+                    resume_text += text + "\n"
+                    
+        # Clean up temp file
+        try:
+            os.remove(temp_pdf_path)
+        except:
+            pass
+                    
+        result = await extraction_agent.run(f"Resume Text:\n{resume_text}")
+        user_profile = result.data
         
-    resume_text = ""
-    with pdfplumber.open(temp_pdf_path) as pdf:
-        for page in pdf.pages:
-            text = page.extract_text()
-            if text:
-                resume_text += text + "\n"
-                
-    result = await extraction_agent.run(f"Resume Text:\n{resume_text}")
-    user_profile = result.data
-    
-    # Store in memory for now
-    active_state["current"] = {
-        "master_resume_path": temp_pdf_path,
-        "target_role": target_role,
-        "target_experience_level": target_experience_level,
-        "user_profile": user_profile,
-        "daily_job_queue": [],
-        "application_count": 0,
-        "excel_dashboard_path": "application_dashboard.xlsx"
-    }
-    
-    return {"message": "Onboarding successful", "profile": user_profile}
+        # Store in memory for now
+        active_state["current"] = {
+            "master_resume_path": "uploaded_resume.pdf",  # We aren't storing the physical file long-term right now
+            "target_role": target_role,
+            "target_experience_level": target_experience_level,
+            "user_profile": user_profile,
+            "daily_job_queue": [],
+            "application_count": 0,
+            "excel_dashboard_path": "application_dashboard.xlsx"
+        }
+        
+        return {"message": "Onboarding successful", "profile": user_profile}
+        
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        # Return a 500 status with details
+        from fastapi import HTTPException
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/start-agents")
 async def start_agents(background_tasks: BackgroundTasks):
