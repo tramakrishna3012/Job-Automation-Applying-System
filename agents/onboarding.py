@@ -1,38 +1,32 @@
 import os
 import pdfplumber
+import asyncio
 from rich.console import Console
 from rich.prompt import Prompt
-from pydantic_ai import Agent
-from pydantic_ai.models.gemini import GeminiModel
-from pydantic_ai.models.groq import GroqModel
-from pydantic_ai.models.ollama import OllamaModel
-from pydantic_ai.providers.ollama import OllamaProvider
-from pydantic_ai.models.fallback import FallbackModel
 
 from core.state import UserProfile
-from core.config import GEMINI_API_KEY
+from core.ai_gateway import async_structured_output, generate_embedding
+from core.db import save_candidate_profile_vector
 
 console = Console()
 
-# We configure Pydantic AI to use Gemini
-gemini_model = GeminiModel("gemini-1.5-pro")
-groq_model = GroqModel("llama-3.3-70b-versatile")
-ollama_provider = OllamaProvider(base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"))
-ollama_model = OllamaModel("llama3.2", provider=ollama_provider)
-model = FallbackModel(gemini_model, groq_model, ollama_model)
-extraction_agent = Agent(
-    model,
-    output_type=UserProfile,
-    system_prompt=(
-        "You are an expert resume parser. "
-        "Extract the user's details from the provided resume text and map them exactly to the UserProfile schema. "
-        "Do not hallucinate skills or experience."
-    ),
+ONBOARDING_SYSTEM_PROMPT = (
+    "You are an expert resume parser and candidate profiler. "
+    "Extract the user's details from the provided resume text and map them exactly to the UserProfile schema. "
+    "CRITICAL: Do NOT hallucinate skills or experience. Only extract facts present in the text."
 )
 
+async def parse_resume_text(resume_text: str) -> UserProfile:
+    """Uses Requesty AI Gateway to extract structured UserProfile from resume text."""
+    return await async_structured_output(
+        system_prompt=ONBOARDING_SYSTEM_PROMPT,
+        user_content=f"Resume Text:\n{resume_text}",
+        response_model=UserProfile,
+    )
+
 async def run_onboarding() -> dict:
-    console.print("[bold blue]Welcome to the Autonomous Job Application Agent System![/bold blue]")
-    console.print("Let's get started by setting up your profile.\n")
+    console.print("[bold blue]Welcome to the Autonomous Job Application Agent System (Requesty Router Enabled)![/bold blue]")
+    console.print("Let's get started by setting up your candidate profile.\n")
 
     master_resume_path = Prompt.ask("Please provide the absolute path to your master PDF resume")
     
@@ -56,17 +50,19 @@ async def run_onboarding() -> dict:
         console.print(f"[bold red]Failed to read PDF:[/] {e}")
         return {}
 
-    console.print("[yellow]Parsing resume using Gemini API...[/yellow]")
+    console.print("[yellow]Parsing candidate profile via Requesty AI Router Gateway...[/yellow]")
     try:
-        # Pydantic AI Agent Run
-        result = await extraction_agent.run(f"Resume Text:\n{resume_text}")
-        user_profile = result.output
-        console.print("[bold green]Profile successfully parsed![/bold green]")
+        user_profile = await parse_resume_text(resume_text)
+        console.print("[bold green]Candidate profile successfully parsed via Requesty![/bold green]")
+        
+        skills_text = f"{target_role} {user_profile.name} Skills: {', '.join(user_profile.skills)}"
+        embedding = await generate_embedding(skills_text)
+        save_candidate_profile_vector(user_profile.email, user_profile.model_dump(), skills_text, embedding)
+        
     except Exception as e:
         console.print(f"[bold red]Failed to parse profile:[/] {e}")
         return {}
     
-    # Define excel dashboard path
     dashboard_path = os.path.join(os.getcwd(), "application_dashboard.xlsx")
 
     state_init = {

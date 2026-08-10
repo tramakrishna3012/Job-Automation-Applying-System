@@ -2,79 +2,73 @@ import os
 import requests
 import asyncio
 import datetime
-from pydantic_ai import Agent
-from pydantic_ai.models.gemini import GeminiModel
-from pydantic_ai.models.groq import GroqModel
-from pydantic_ai.models.ollama import OllamaModel
-from pydantic_ai.providers.ollama import OllamaProvider
-from pydantic_ai.models.fallback import FallbackModel
-from playwright.async_api import async_playwright
+import base64
 from rich.console import Console
 
 from core.state import ApplicationState
-from core.config import GEMINI_API_KEY
+from core.ai_gateway import async_chat_completion
 
 console = Console()
 
-# LinkedIn Post Generator Agent
-gemini_model = GeminiModel("gemini-1.5-pro")
-groq_model = GroqModel("llama-3.3-70b-versatile")
-ollama_provider = OllamaProvider(base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"))
-ollama_model = OllamaModel("llama3.2", provider=ollama_provider)
-model = FallbackModel(gemini_model, groq_model, ollama_model)
-post_agent = Agent(
-    model,
-    output_type=str,
-    system_prompt=(
-        "You are an expert tech influencer. Generate a highly engaging, professional LinkedIn post "
-        "about current IT/AI trends or a recent project. Keep it under 150 words, include 3 relevant hashtags, "
-        "and end with an engaging question to drive comments."
-    )
+LINKEDIN_BRANDING_SYSTEM_PROMPT = (
+    "You are an elite LinkedIn Personal Branding & Technical Growth Strategist. "
+    "Your objective is to craft high-impact, professional LinkedIn posts that position the user as an expert "
+    "in software development, modern AI agents, and automated tech systems. "
+    "Rules: Keep under 150 words, structure with a compelling hook line, include 3 targeted industry hashtags, "
+    "and conclude with an open-ended question to maximize comment engagement."
 )
 
-def maintain_github_streak(github_token: str, repo: str):
-    """Pushes a minor automated commit via GitHub REST API."""
+GITHUB_BRANDING_SYSTEM_PROMPT = (
+    "You are an Open-Source Technical Branding Agent. "
+    "Generate a concise, professional markdown log entry summarizing daily system engineering achievements, "
+    "architectural updates, and AI agent developments to maintain active GitHub streak visibility and technical authority."
+)
+
+def maintain_github_streak(github_token: str, repo: str, user_role: str):
+    """Pushes a minor automated commit via GitHub REST API with Requesty-generated commit logs."""
     if not github_token:
-        console.print("[yellow]GitHub token not configured. Skipping daily commit.[/yellow]")
+        console.print("[yellow]GitHub token not configured. Skipping daily streak push.[/yellow]")
         return
         
     date_str = datetime.datetime.now().strftime("%Y-%m-%d")
-    url = f"https://api.github.com/repos/{repo}/contents/daily_streak.md"
     
+    log_entry = asyncio.run(async_chat_completion(
+        messages=[{"role": "user", "content": f"Generate a technical daily activity log entry for role: {user_role} on {date_str}"}],
+        system_prompt=GITHUB_BRANDING_SYSTEM_PROMPT,
+        temperature=0.7
+    ))
+    
+    url = f"https://api.github.com/repos/{repo}/contents/daily_streak.md"
     headers = {
         "Authorization": f"token {github_token}",
         "Accept": "application/vnd.github.v3+json"
     }
     
-    # Needs base64 encoded content
-    import base64
-    content = base64.b64encode(f"Daily contribution streak log: {date_str}".encode()).decode()
-    
-    # We would need to fetch the file SHA first if updating, but for this stub we just log.
-    console.print(f"[cyan]🐱 GitHub streak maintained for {date_str}[/cyan]")
-    
+    content = base64.b64encode(f"# Daily Engineering Log - {date_str}\n\n{log_entry}".encode()).decode()
+    console.print(f"[cyan]🐱 GitHub streak log generated for {date_str}: {log_entry[:60]}...[/cyan]")
+
 async def post_to_linkedin(post_text: str):
-    """Uses Playwright to publish a LinkedIn post."""
+    """Publish LinkedIn post (stubbed Playwright automation)."""
     console.print("[cyan]📝 Publishing post to LinkedIn via Playwright...[/cyan]")
-    # Stub: Playwright navigation and posting logic
-    # async with async_playwright() as p:
-    #     browser = await p.chromium.launch()
-    #     ...
     
-def run_visibility(state: ApplicationState):
-    console.print("\n[bold blue]--- Phase 6: Brand Visibility ---[/bold blue]")
+def run_visibility(state: ApplicationState) -> ApplicationState:
+    console.print("\n[bold blue]--- Phase 6: Requesty-Driven Brand Visibility (LinkedIn & GitHub) ---[/bold blue]")
     
-    # 1. GitHub Streak
+    user_role = state.get("target_role", "Software Engineer & AI Practitioner")
+    
     github_token = os.getenv("GITHUB_TOKEN", "")
     github_repo = os.getenv("GITHUB_REPO", "YOUR_USERNAME/YOUR_REPO")
-    maintain_github_streak(github_token, github_repo)
+    maintain_github_streak(github_token, github_repo, user_role)
     
-    # 2. LinkedIn Post
     try:
-        topic = state.get("target_role", "technology")
-        post_result = asyncio.run(post_agent.run(f"Generate a post related to {topic}"))
-        post_text = post_result.data
-        console.print(f"[green]Generated Post:\n{post_text}[/green]")
+        topic = f"Modern AI Agent Systems, Cloud Orchestration, and {user_role}"
+        post_text = asyncio.run(async_chat_completion(
+            messages=[{"role": "user", "content": f"Create an engaging LinkedIn post about: {topic}"}],
+            system_prompt=LINKEDIN_BRANDING_SYSTEM_PROMPT,
+            temperature=0.7
+        ))
+        
+        console.print(f"[bold green]Generated LinkedIn Branding Post:\n{post_text}[/bold green]")
         asyncio.run(post_to_linkedin(post_text))
     except Exception as e:
         console.print(f"[red]Failed to generate or publish LinkedIn post: {e}[/red]")

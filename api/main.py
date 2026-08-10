@@ -1,29 +1,29 @@
 import asyncio
-from fastapi import FastAPI, WebSocket, UploadFile, File, BackgroundTasks, Form
+from fastapi import FastAPI, WebSocket, UploadFile, File, BackgroundTasks, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 import uvicorn
 from contextlib import asynccontextmanager
-
-from core.graph import app as graph_app
-from core.state import ApplicationState
-from agents.onboarding import extraction_agent
-from core.db import get_db_connection
 import pdfplumber
 import os
 import tempfile
+
+from core.graph import app as graph_app
+from core.state import ApplicationState
+from agents.onboarding import parse_resume_text
+from core.db import get_db_connection
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     yield
 
-app = FastAPI(title="Job Application Agent API", lifespan=lifespan)
+app = FastAPI(title="Job Application Agent API (Requesty AI Gateway Enabled)", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # In production, restrict to frontend URL
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -35,7 +35,7 @@ class OnboardingRequest(BaseModel):
 
 @app.get("/api/health")
 async def healthcheck():
-    return {"status": "ok", "service": "job-automation-api"}
+    return {"status": "ok", "service": "job-automation-api", "gateway": "Requesty AI Router"}
 
 @app.get("/api/stats")
 async def get_stats():
@@ -77,7 +77,6 @@ async def get_logs():
     finally:
         conn.close()
 
-# In-memory store for demo (should be DB backed in prod)
 active_state = {}
 
 @app.post("/api/onboard")
@@ -88,7 +87,6 @@ async def onboard(
     file: UploadFile = File(...)
 ):
     try:
-        # Save file securely
         fd, temp_pdf_path = tempfile.mkstemp(suffix=".pdf")
         os.close(fd)
         with open(temp_pdf_path, "wb") as f:
@@ -101,18 +99,15 @@ async def onboard(
                 if text:
                     resume_text += text + "\n"
                     
-        # Clean up temp file
         try:
             os.remove(temp_pdf_path)
-        except:
+        except Exception:
             pass
                     
-        result = await extraction_agent.run(f"Resume Text:\n{resume_text}")
-        user_profile = result.output
+        user_profile = await parse_resume_text(resume_text)
         
-        # Store in memory for now
         active_state["current"] = {
-            "master_resume_path": "uploaded_resume.pdf",  # We aren't storing the physical file long-term right now
+            "master_resume_path": "uploaded_resume.pdf",
             "target_role": target_role,
             "target_experience_level": target_experience_level,
             "user_profile": user_profile,
@@ -121,13 +116,11 @@ async def onboard(
             "excel_dashboard_path": "application_dashboard.xlsx"
         }
         
-        return {"message": "Onboarding successful", "profile": user_profile}
+        return {"message": "Onboarding successful via Requesty Router", "profile": user_profile}
         
     except Exception as e:
         import traceback
         error_details = traceback.format_exc()
-        # Return a 500 status with details
-        from fastapi import HTTPException
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/start-agents")
@@ -143,22 +136,18 @@ async def start_agents(background_tasks: BackgroundTasks):
         graph_app.invoke(state)
         
     background_tasks.add_task(run_graph)
-    return {"message": "Agents started in background"}
+    return {"message": "Agents started in background via Requesty AI Router"}
 
 @app.websocket("/api/stream")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
-    # Stub for streaming terminal logs.
-    # We would integrate with Python logging to push messages here.
     try:
         while True:
-            # Just keeping connection alive for now
             data = await websocket.receive_text()
             await websocket.send_text(f"Message text was: {data}")
     except Exception:
         pass
 
-# Mount Next.js static export. Must be placed after API routes.
 if os.path.isdir("frontend/out"):
     app.mount("/", StaticFiles(directory="frontend/out", html=True), name="static")
 

@@ -5,7 +5,7 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app/frontend
 
-# Install dependencies (only copy what's needed for install to cache layer)
+# Install dependencies
 COPY frontend/package*.json ./
 RUN npm ci
 
@@ -16,12 +16,12 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV DISABLE_ESLINT_PLUGIN=true
 ENV NODE_OPTIONS="--max-old-space-size=192"
 
-# Build Next.js app (outputs to /app/frontend/out because of next.config.ts export)
+# Build Next.js app (outputs to /app/frontend/out)
 RUN npm run build
 
 
 # ==========================================
-# Stage 2: Build the FastAPI Backend
+# Stage 2: Build the FastAPI Backend with Requesty & WeasyPrint
 # ==========================================
 FROM mcr.microsoft.com/playwright/python:v1.42.0-jammy
 
@@ -30,20 +30,28 @@ WORKDIR /app
 
 # Set timezone to IST (Asia/Kolkata)
 ENV TZ="Asia/Kolkata"
-RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y tzdata && \
-    ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+# Install WeasyPrint system C-libraries and tzdata
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    tzdata \
+    libpango-1.0-0 \
+    libpangoft2-1.0-0 \
+    libcairo2 \
+    libgdk-pixbuf-2.0-0 \
+    libffi-dev \
+    shared-mime-info \
+    fontconfig \
+    && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install uv for fast package management
 RUN pip install uv
 
 # Copy backend dependencies
-COPY pyproject.toml uv.lock ./
+COPY pyproject.toml ./
 
-# Install backend dependencies directly from pyproject to avoid cross-platform issues
+# Install backend dependencies directly from pyproject
 RUN uv pip install --system -r pyproject.toml
-
-# Browsers are already included in the mcr.microsoft.com/playwright/python base image.
-# Skipping playwright install to drastically speed up the build.
 
 # Copy backend project files
 COPY . .

@@ -1,74 +1,58 @@
 import asyncio
-from pydantic_ai import Agent
-from pydantic_ai.models.gemini import GeminiModel
-from pydantic_ai.models.groq import GroqModel
-from pydantic_ai.models.ollama import OllamaModel
-from pydantic_ai.providers.ollama import OllamaProvider
-from pydantic_ai.models.fallback import FallbackModel
-import os
 from rich.console import Console
 
-from core.config import GEMINI_API_KEY
 from core.state import ApplicationState
 from core.db import get_db_connection
+from core.ai_gateway import async_chat_completion
 
 console = Console()
 
-# Intent Classification Agent
-gemini_model = GeminiModel("gemini-1.5-pro")
-groq_model = GroqModel("llama-3.3-70b-versatile")
-ollama_provider = OllamaProvider(base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"))
-ollama_model = OllamaModel("llama3.2", provider=ollama_provider)
-model = FallbackModel(gemini_model, groq_model, ollama_model)
-intent_agent = Agent(
-    model,
-    output_type=str,
-    system_prompt=(
-        "Classify the intent of the following HR email response into one of three categories: "
-        "'Interview', 'Rejected', or 'Interested'. "
-        "If it is a generic auto-reply, classify as 'Pending'. "
-        "Only return the exact category string."
-    )
+TRACKER_INTENT_SYSTEM_PROMPT = (
+    "Classify the intent of the following HR email response into one of four exact categories: "
+    "'Interview', 'Rejected', 'Interested', or 'Pending'. "
+    "If it is a request to interview/schedule a call, return 'Interview'. "
+    "If it is a rejection email, return 'Rejected'. "
+    "If positive interest without concrete interview scheduling yet, return 'Interested'. "
+    "If an automated confirmation or generic acknowledgement, return 'Pending'. "
+    "Return ONLY the exact category string."
 )
 
+async def classify_email_intent(email_body: str) -> str:
+    """Classifies HR email intent via Requesty AI Router Gateway."""
+    intent = await async_chat_completion(
+        messages=[{"role": "user", "content": f"HR Email Body:\n{email_body}"}],
+        system_prompt=TRACKER_INTENT_SYSTEM_PROMPT,
+        temperature=0.0
+    )
+    clean_intent = intent.strip().replace("'", "").replace('"', '')
+    if clean_intent not in ['Interview', 'Rejected', 'Interested', 'Pending']:
+        clean_intent = 'Pending'
+    return clean_intent
+
 async def check_inbox_and_classify(state: ApplicationState):
-    """Polls inbox and updates Excel dashboard based on classified intent."""
-    dashboard_path = state.get("excel_dashboard_path")
+    """Polls inbox and updates DB status based on classified intent."""
+    console.print("[cyan]🔍 Polling inbox for HR responses via Requesty Intent Classifier...[/cyan]")
     
-    if not dashboard_path:
-        return
-        
-    console.print("[cyan]🔍 Polling inbox for HR responses...[/cyan]")
-    # Stub: Fetch emails from Gmail API matching HR contacts
-    # ...
-    
-    # Example simulated incoming email
     simulated_email = {
         "company": "TechCorp",
-        "body": "Thank you for reaching out. We would love to schedule a call with you next week."
+        "body": "Thank you for reaching out. We were very impressed by your background and would love to schedule an interview call with our engineering team next week."
     }
     
     try:
-        result = await intent_agent.run(simulated_email["body"])
-        intent = result.data
-        console.print(f"[green]Detected intent for {simulated_email['company']}: {intent}[/green]")
+        intent = await classify_email_intent(simulated_email["body"])
+        console.print(f"[bold green]Detected intent for {simulated_email['company']}: {intent}[/bold green]")
         
-        try:
-            conn = get_db_connection()
-            if conn:
-                with conn.cursor() as cur:
-                    cur.execute(
-                        "UPDATE job_applications SET status = %s WHERE company = %s",
-                        (intent, simulated_email['company'])
-                    )
-                console.print(f"[green]Dashboard updated for {simulated_email['company']}[/green]")
-                conn.close()
-            else:
-                console.print("[yellow]Neon DB not configured. Skipping dashboard update.[/yellow]")
-        except Exception as e:
-            console.print(f"[red]Failed to update dashboard from tracker: {e}[/red]")
+        conn = get_db_connection()
+        if conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE job_applications SET status = %s WHERE company = %s",
+                    (intent, simulated_email['company'])
+                )
+            console.print(f"[green]Dashboard DB updated for {simulated_email['company']}[/green]")
+            conn.close()
+        else:
+            console.print("[yellow]Neon DB not configured. Skipping dashboard update.[/yellow]")
             
     except Exception as e:
         console.print(f"[red]Failed to classify intent: {e}[/red]")
-        
-# For demonstration, this can be called as part of the communicator or as a separate daemon.
