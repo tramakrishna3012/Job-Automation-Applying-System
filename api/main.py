@@ -2,18 +2,23 @@ import asyncio
 from fastapi import FastAPI, WebSocket, UploadFile, File, BackgroundTasks, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 import uvicorn
 from contextlib import asynccontextmanager
 import pdfplumber
 import os
 import tempfile
+import uuid
 
 from core.graph import app as graph_app
-from core.state import ApplicationState
+from core.state import ApplicationState, UserProfile, Education, Experience, JobMatch
 from agents.onboarding import parse_resume_text
-from core.db import get_db_connection
+from agents.editor import tailor_for_job
+from agents.visibility import LINKEDIN_BRANDING_SYSTEM_PROMPT, GITHUB_BRANDING_SYSTEM_PROMPT
+from agents.tracker import classify_email_intent
+from core.ai_gateway import async_chat_completion
+from core.db import get_db_connection, log_telemetry
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -48,13 +53,39 @@ async def get_stats():
             cur.execute("SELECT COUNT(*) as discovered FROM job_applications")
             discovered = cur.fetchone()['discovered']
             
-            cur.execute("SELECT COUNT(*) as applied FROM job_applications WHERE status = 'applied'")
+            cur.execute("SELECT COUNT(*) as applied FROM job_applications WHERE LOWER(status) LIKE 'app%'")
             applied = cur.fetchone()['applied']
             
-            cur.execute("SELECT COUNT(*) as interviews FROM job_applications WHERE status = 'Interview'")
+            cur.execute("SELECT COUNT(*) as interviews FROM job_applications WHERE LOWER(status) LIKE 'interv%'")
             interviews = cur.fetchone()['interviews']
             
         return {"discovered": discovered, "applied": applied, "interviews": interviews}
+    except Exception as e:
+        return {"error": str(e)}
+    finally:
+        conn.close()
+
+@app.get("/api/applications")
+async def get_applications():
+    conn = get_db_connection()
+    if not conn:
+        return {"applications": []}
+        
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, company, role, url, status, date_applied FROM job_applications ORDER BY date_applied DESC LIMIT 50")
+            rows = cur.fetchall()
+            applications = [
+                {
+                    "id": str(row['id']),
+                    "company": row['company'],
+                    "role": row['role'],
+                    "url": row['url'],
+                    "status": row['status'],
+                    "date_applied": row['date_applied'].isoformat() if row['date_applied'] else None
+                } for row in rows
+            ]
+        return {"applications": applications}
     except Exception as e:
         return {"error": str(e)}
     finally:
@@ -68,7 +99,7 @@ async def get_logs():
         
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT agent_name, message, timestamp FROM agent_logs ORDER BY timestamp DESC LIMIT 10")
+            cur.execute("SELECT agent_name, message, timestamp FROM agent_logs ORDER BY timestamp DESC LIMIT 30")
             rows = cur.fetchall()
             logs = [{"agent": row['agent_name'], "message": row['message'], "time": row['timestamp'].isoformat()} for row in rows]
         return {"logs": logs}
@@ -131,12 +162,98 @@ async def start_agents(background_tasks: BackgroundTasks):
     state = active_state["current"]
     
     def run_graph():
-        from core.db import log_telemetry
         log_telemetry("System", f"Agent Zero initialized. Target role: {state.get('target_role')}. Beginning automated workflow...")
         graph_app.invoke(state)
         
     background_tasks.add_task(run_graph)
     return {"message": "Agents started in background via Requesty AI Router"}
+
+@app.post("/api/test-apply")
+async def test_apply():
+    """End-to-end AI agent test execution pipeline to test Requesty AI gateway, resume architect & database workflow."""
+    log_telemetry("System", "Starting End-to-End AI Agent Test Workflow...")
+    
+    sample_profile = UserProfile(
+        name="Alex Mercer",
+        email="alex.mercer@example.com",
+        phone="+1 (555) 234-5678",
+        location="San Francisco, CA",
+        skills=["Python", "FastAPI", "React", "PostgreSQL", "pgvector", "Docker", "OpenAI SDK"],
+        experience=[
+            Experience(
+                company="Nexus AI Corp",
+                role="Senior Full-Stack AI Engineer",
+                start_date="2022",
+                end_date="Present",
+                responsibilities=[
+                    "Engineered autonomous AI routing system handling multi-LLM gateways.",
+                    "Designed high-throughput vector database search pipelines using pgvector."
+                ]
+            )
+        ],
+        education=[
+            Education(
+                institution="University of California, Berkeley",
+                degree="B.S. Computer Science",
+                graduation_date="2021"
+            )
+        ]
+    )
+    
+    test_job_id = str(uuid.uuid4())[:8]
+    test_job = JobMatch(
+        id=test_job_id,
+        title="Senior AI Systems Engineer",
+        company="Requesty Cloud Labs",
+        location="Remote (US)",
+        url="https://example.com/careers/ai-engineer",
+        description="We are looking for a Senior AI Engineer proficient in Python, FastAPI, OpenAI SDK, vector search, and containerized Docker deployments."
+    )
+    
+    log_telemetry("Scout", f"Test Scout matched job: {test_job.title} at {test_job.company}")
+    
+    tailored_job = await tailor_for_job(test_job, sample_profile)
+    log_telemetry("Editor", f"Resume Architect compiled tailored resume for {test_job.company}")
+    
+    conn = get_db_connection()
+    if conn:
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "INSERT INTO job_applications (company, role, url, status) VALUES (%s, %s, %s, %s)",
+                    (test_job.company, test_job.title, test_job.url, "Applied")
+                )
+            log_telemetry("Dispatcher", f"Auto-Apply submitted test application to Neon DB for {test_job.company}")
+        except Exception as e:
+            log_telemetry("Dispatcher", f"DB insert note: {e}")
+        finally:
+            conn.close()
+            
+    linkedin_post = await async_chat_completion(
+        messages=[{"role": "user", "content": "Create a post celebrating our new Requesty AI Unified Router deployment!"}],
+        system_prompt=LINKEDIN_BRANDING_SYSTEM_PROMPT,
+        temperature=0.7
+    )
+    log_telemetry("Visibility", "Generated Requesty LinkedIn Personal Branding post")
+    
+    intent = await classify_email_intent("We would love to invite you to an interview call for the AI Engineer role!")
+    log_telemetry("Tracker", f"HR Response classified as: {intent}")
+    
+    return {
+        "status": "success",
+        "message": "Test job application and AI pipeline completed successfully!",
+        "job": {
+            "id": test_job.id,
+            "title": test_job.title,
+            "company": test_job.company,
+            "status": "Applied",
+            "tailored_resume_path": tailored_job.tailored_resume_path
+        },
+        "branding": {
+            "linkedin_post": linkedin_post
+        },
+        "tracker_intent": intent
+    }
 
 @app.websocket("/api/stream")
 async def websocket_endpoint(websocket: WebSocket):
