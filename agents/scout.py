@@ -1,37 +1,22 @@
 import asyncio
 import json
+import os
 from jobspy import scrape_jobs
 from playwright.async_api import async_playwright
 from bs4 import BeautifulSoup
-from pydantic_ai import Agent
-from core.db import get_db_connection, log_telemetry
-from pydantic_ai.models.gemini import GeminiModel
-from pydantic_ai.models.groq import GroqModel
-from pydantic_ai.models.ollama import OllamaModel
-from pydantic_ai.providers.ollama import OllamaProvider
-from pydantic_ai.models.fallback import FallbackModel
-import os
+from rich.console import Console
 
 from core.state import ApplicationState, JobMatch
-from core.config import GEMINI_API_KEY
-from rich.console import Console
+from core.db import get_db_connection, log_telemetry
+from core.ai_gateway import async_chat_completion, generate_embedding
 
 console = Console()
 
-# We configure Pydantic AI for LLM fallback in job description extraction
-gemini_model = GeminiModel("gemini-1.5-pro")
-groq_model = GroqModel("llama-3.3-70b-versatile")
-ollama_provider = OllamaProvider(base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"))
-ollama_model = OllamaModel("llama3.2", provider=ollama_provider)
-model = FallbackModel(gemini_model, groq_model, ollama_model)
-jd_extractor_agent = Agent(
-    model,
-    output_type=str,
-    system_prompt=(
-        "Extract the raw job description text from the following HTML body text. "
-        "Remove navigation, footers, headers, and only return the core job responsibilities, "
-        "requirements, and description."
-    ),
+SCOUT_JD_SYSTEM_PROMPT = (
+    "You are an AI Web Content & Job Description Extractor. "
+    "Extract the core job description text from the provided HTML body text. "
+    "Remove site navigation, headers, footers, sidebars, related posts, and advertisements. "
+    "Return strictly the target job role, responsibilities, technical requirements, and qualifications."
 )
 
 async def extract_jd(page, url: str) -> str:
@@ -60,7 +45,7 @@ async def extract_jd(page, url: str) -> str:
         except Exception:
             continue
 
-    # Tier 2: CSS Selectors (common selectors for LinkedIn, Indeed, Glassdoor)
+    # Tier 2: CSS Selectors
     common_selectors = [
         ".job-description", ".show-more-less-html__markup", 
         "#jobDescriptionText", ".jobDescriptionContent", ".desc"
@@ -70,25 +55,27 @@ async def extract_jd(page, url: str) -> str:
         if element:
             return element.get_text(separator="\n").strip()
 
-    # Tier 3: LLM DOM reading
-    console.print("[yellow]Falling back to LLM for JD extraction...[/yellow]")
+    # Tier 3: Requesty AI Router Gateway fallback
+    console.print("[yellow]Falling back to Requesty AI Router for JD extraction...[/yellow]")
     body_text = soup.body.get_text(separator="\n", strip=True) if soup.body else ""
-    # Truncate text if too long to save tokens
     body_text = body_text[:15000]
     
     if not body_text:
         return ""
 
     try:
-        result = await jd_extractor_agent.run(f"HTML Body Text:\n{body_text}")
-        return result.data
+        extracted = await async_chat_completion(
+            messages=[{"role": "user", "content": f"HTML Body Text:\n{body_text}"}],
+            system_prompt=SCOUT_JD_SYSTEM_PROMPT,
+            temperature=0.2
+        )
+        return extracted
     except Exception as e:
-        console.print(f"[red]LLM extraction failed: {e}[/red]")
+        console.print(f"[red]Requesty LLM extraction failed: {e}[/red]")
         return ""
 
 async def enrich_jobs_with_playwright(jobs: list[JobMatch]) -> list[JobMatch]:
     async with async_playwright() as p:
-        # Launching with stealth arguments
         browser = await p.chromium.launch(
             headless=True,
             args=["--disable-blink-features=AutomationControlled"]
@@ -97,38 +84,39 @@ async def enrich_jobs_with_playwright(jobs: list[JobMatch]) -> list[JobMatch]:
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         )
         
-        # We can process sequentially or in batches. Let's do small batches to be safe.
         for i, job in enumerate(jobs):
             console.print(f"Enriching job {i+1}/{len(jobs)}: {job.title} at {job.company}")
             page = await context.new_page()
             jd = await extract_jd(page, job.url)
             job.description = jd
             await page.close()
-            # Small delay to avoid aggressive rate limiting
             await asyncio.sleep(2)
             
         await browser.close()
     return jobs
 
 def run_scout(state: ApplicationState) -> ApplicationState:
-    console.print("\n[bold blue]--- Phase 2: High-Volume Job Discovery ---[/bold blue]")
+    console.print("\n[bold blue]--- Phase 2: High-Volume Job Discovery & Requesty AI Enrichment ---[/bold blue]")
     target_role = state.get("target_role", "Software Engineer")
     target_exp = state.get("target_experience_level", "")
     
     search_term = f"{target_exp} {target_role}".strip()
     
-    # We want 100 jobs. JobSpy can fetch chunks.
     console.print(f"Scraping jobs for: {search_term}...")
     log_telemetry("Scout", f"Initiating job search for: {search_term}")
     
-    jobs_df = scrape_jobs(
-        site_name=["linkedin", "indeed", "glassdoor"],
-        search_term=search_term,
-        location="Remote", # Defaulting to remote
-        results_wanted=100,
-        hours_old=24, # Fresh jobs
-        country_ecea='us' # Defaulting to US
-    )
+    try:
+        jobs_df = scrape_jobs(
+            site_name=["linkedin", "indeed", "glassdoor"],
+            search_term=search_term,
+            location="Remote",
+            results_wanted=100,
+            hours_old=24,
+            country_ecea='us'
+        )
+    except Exception as e:
+        console.print(f"[yellow]JobSpy scrape exception: {e}. Using queue state if populated.[/yellow]")
+        return state
     
     if jobs_df.empty:
         console.print("[red]No jobs found![/red]")
@@ -137,9 +125,7 @@ def run_scout(state: ApplicationState) -> ApplicationState:
     console.print(f"[green]Found {len(jobs_df)} jobs. Enriching...[/green]")
     log_telemetry("Scout", f"Discovered {len(jobs_df)} raw job matches. Enriching data...")
     
-    # Convert dataframe to JobMatch objects
     queued_jobs = []
-    # Take up to 100
     for _, row in jobs_df.head(100).iterrows():
         job_match = JobMatch(
             id=str(row.get('id', '')),
@@ -150,7 +136,6 @@ def run_scout(state: ApplicationState) -> ApplicationState:
         )
         queued_jobs.append(job_match)
         
-    # Enrich asynchronously
     enriched_jobs = asyncio.run(enrich_jobs_with_playwright(queued_jobs))
     
     state["daily_job_queue"] = enriched_jobs
