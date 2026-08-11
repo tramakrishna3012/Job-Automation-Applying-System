@@ -255,6 +255,103 @@ async def test_apply():
         "tracker_intent": intent
     }
 
+@app.get("/api/pipeline")
+async def get_pipeline():
+    """Returns applications grouped by pipeline stage for Kanban view."""
+    conn = get_db_connection()
+    if not conn:
+        return {"stages": {"discovered": [], "evaluating": [], "generating": [], "applied": []}}
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, company, role, url, status, date_applied FROM job_applications ORDER BY date_applied DESC LIMIT 100")
+            rows = cur.fetchall()
+
+        stages = {"discovered": [], "evaluating": [], "generating": [], "applied": []}
+        for row in rows:
+            app = {
+                "id": str(row['id']),
+                "company": row['company'],
+                "role": row['role'],
+                "url": row['url'],
+                "status": row['status'],
+                "date_applied": row['date_applied'].isoformat() if row['date_applied'] else None
+            }
+            s = (row['status'] or '').lower()
+            if 'applied' in s or 'success' in s:
+                stages['applied'].append(app)
+            elif 'generat' in s or 'resum' in s:
+                stages['generating'].append(app)
+            elif 'evaluat' in s or 'match' in s:
+                stages['evaluating'].append(app)
+            else:
+                stages['discovered'].append(app)
+
+        return {"stages": stages}
+    except Exception as e:
+        return {"error": str(e)}
+    finally:
+        conn.close()
+
+@app.get("/api/resume/{job_id}")
+async def get_resume_html(job_id: str):
+    """Returns the generated HTML resume for a job application."""
+    import glob
+    resume_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".resumes")
+    pattern = os.path.join(resume_dir, f"resume_{job_id}*.html")
+    matches = glob.glob(pattern)
+
+    if matches:
+        with open(matches[0], "r", encoding="utf-8") as f:
+            html_content = f.read()
+        return {"html": html_content, "job_title": "Tailored Resume", "company": job_id}
+
+    return {"html": "<p>Resume not yet generated for this job.</p>", "job_title": "", "company": ""}
+
+@app.get("/api/branding/posts")
+async def get_branding_posts():
+    """Returns branding-related agent logs for the Social Branding Hub."""
+    conn = get_db_connection()
+    if not conn:
+        return {"posts": []}
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT agent_name, message, timestamp FROM agent_logs
+                WHERE agent_name = 'Visibility'
+                   OR LOWER(message) LIKE '%%linkedin%%'
+                   OR LOWER(message) LIKE '%%github%%'
+                   OR LOWER(message) LIKE '%%branding%%'
+                ORDER BY timestamp DESC LIMIT 20
+            """)
+            rows = cur.fetchall()
+            posts = [{
+                "agent": row['agent_name'],
+                "message": row['message'],
+                "time": row['timestamp'].isoformat(),
+                "type": "linkedin" if "linkedin" in row['message'].lower() else "github"
+            } for row in rows]
+        return {"posts": posts}
+    except Exception as e:
+        return {"error": str(e)}
+    finally:
+        conn.close()
+
+@app.post("/api/branding/generate")
+async def generate_branding_post():
+    """Generates a new LinkedIn branding post via Requesty AI."""
+    try:
+        post = await async_chat_completion(
+            messages=[{"role": "user", "content": "Create a high-impact LinkedIn post about leveraging AI agents for autonomous career growth and technical branding."}],
+            system_prompt=LINKEDIN_BRANDING_SYSTEM_PROMPT,
+            temperature=0.7
+        )
+        log_telemetry("Visibility", f"Generated LinkedIn branding post: {post[:80]}...")
+        return {"post": post}
+    except Exception as e:
+        return {"error": str(e)}
+
 @app.websocket("/api/stream")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
