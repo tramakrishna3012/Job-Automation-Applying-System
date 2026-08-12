@@ -2,9 +2,13 @@ from langgraph.graph import StateGraph, START, END
 from core.state import ApplicationState
 
 from agents.scout import run_scout
+from agents.jobcode import run_jobcode
 
 def scout_jobs_node(state: ApplicationState):
     return run_scout(state)
+
+def jobcode_node(state: ApplicationState):
+    return run_jobcode(state)
 
 from agents.editor import run_editor
 
@@ -33,6 +37,7 @@ def network_node(state: ApplicationState):
 workflow = StateGraph(ApplicationState)
 
 workflow.add_node("scout", scout_jobs_node)
+workflow.add_node("jobcode", jobcode_node)
 workflow.add_node("tailor", tailor_resume_node)
 workflow.add_node("apply", apply_to_jobs_node)
 workflow.add_node("email", send_emails_node)
@@ -40,7 +45,8 @@ workflow.add_node("network", network_node)
 
 # Flow
 workflow.add_edge(START, "scout")
-workflow.add_edge("scout", "tailor")
+workflow.add_edge("scout", "jobcode")
+workflow.add_edge("jobcode", "tailor")
 workflow.add_edge("tailor", "apply")
 workflow.add_edge("apply", "email")
 workflow.add_edge("email", "network")

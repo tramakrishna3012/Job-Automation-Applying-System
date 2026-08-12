@@ -72,6 +72,30 @@ def init_db():
                         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
                     )
                 """)
+                # Emails table (Cold Outreach & Inbound Classified Replies)
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS emails (
+                        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+                        timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                        direction TEXT NOT NULL,
+                        recipient_name TEXT,
+                        recipient_email TEXT,
+                        company TEXT,
+                        subject TEXT,
+                        body TEXT,
+                        classification TEXT,
+                        status TEXT DEFAULT 'draft'
+                    )
+                """)
+
+                # Scraped URLs deduplication table (Jobcode blog + other job sources)
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS scraped_urls (
+                        url TEXT PRIMARY KEY,
+                        source TEXT NOT NULL,
+                        scraped_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
                 
             console.print("[green]Neon DB with pgvector extension initialized successfully.[/green]")
         except Exception as e:
@@ -81,6 +105,14 @@ def init_db():
 
 # Initialize schema on load
 init_db()
+
+telemetry_listeners = set()
+
+def register_telemetry_listener(callback):
+    telemetry_listeners.add(callback)
+
+def unregister_telemetry_listener(callback):
+    telemetry_listeners.discard(callback)
 
 def log_telemetry(agent_name: str, message: str):
     conn = get_db_connection()
@@ -95,6 +127,13 @@ def log_telemetry(agent_name: str, message: str):
             console.print(f"[red]Failed to insert telemetry: {e}[/red]")
         finally:
             conn.close()
+
+    # Notify live WebSocket listeners
+    for callback in list(telemetry_listeners):
+        try:
+            callback(agent_name, message)
+        except Exception:
+            pass
 
 def save_candidate_profile_vector(email: str, profile_json: dict, skills_text: str, embedding: List[float]):
     """Stores candidate profile and vector embedding in pgvector DB."""
@@ -146,3 +185,77 @@ def hybrid_job_match_search(query_keywords: str, query_embedding: List[float], l
         return []
     finally:
         conn.close()
+def log_email(
+    direction: str,
+    recipient_name: Optional[str],
+    recipient_email: Optional[str],
+    company: Optional[str],
+    subject: Optional[str],
+    body: Optional[str],
+    classification: Optional[str] = None,
+    status: str = "draft"
+):
+    """Logs cold email outbound send or inbound reply into Neon DB."""
+    conn = get_db_connection()
+    if conn:
+        try:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO emails (direction, recipient_name, recipient_email, company, subject, body, classification, status)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                """, (direction, recipient_name, recipient_email, company, subject, body, classification, status))
+        except Exception as e:
+            console.print(f"[red]Failed to log email: {e}[/red]")
+        finally:
+            conn.close()
+
+def get_emails(direction: Optional[str] = None, classification: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+    """Retrieves logged emails filtered by direction or intent classification."""
+    conn = get_db_connection()
+    if not conn:
+        return []
+    try:
+        with conn.cursor() as cur:
+            query = "SELECT * FROM emails WHERE 1=1"
+            params = []
+            if direction:
+                query += " AND direction = %s"
+                params.append(direction)
+            if classification:
+                query += " AND classification = %s"
+                params.append(classification)
+            query += " ORDER BY timestamp DESC LIMIT %s"
+            params.append(limit)
+            cur.execute(query, params)
+            return cur.fetchall()
+    except Exception as e:
+        console.print(f"[red]Failed to fetch emails: {e}[/red]")
+        return []
+    finally:
+        conn.close()
+
+def is_url_scraped(url: str) -> bool:
+    """Checks if a job URL has already been processed."""
+    conn = get_db_connection()
+    if not conn:
+        return False
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT 1 FROM scraped_urls WHERE url = %s", (url,))
+            return cur.fetchone() is not None
+    except Exception:
+        return False
+    finally:
+        conn.close()
+
+def mark_url_scraped(url: str, source: str = "jobcode"):
+    """Marks a URL as scraped in Neon DB."""
+    conn = get_db_connection()
+    if conn:
+        try:
+            with conn.cursor() as cur:
+                cur.execute("INSERT INTO scraped_urls (url, source) VALUES (%s, %s) ON CONFLICT DO NOTHING", (url, source))
+        except Exception:
+            pass
+        finally:
+            conn.close()

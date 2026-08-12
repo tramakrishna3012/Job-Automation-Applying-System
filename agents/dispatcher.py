@@ -8,7 +8,10 @@ from rich.console import Console
 
 from core.state import ApplicationState, JobMatch, UserProfile
 from core.db import get_db_connection, log_telemetry
-from core.config import WHATSAPP_ACCESS_TOKEN, WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_DESTINATION_NUMBER
+from core.config import (
+    WHATSAPP_ACCESS_TOKEN, WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_DESTINATION_NUMBER,
+    AUTO_SUBMIT_ENABLED, MIN_AUTO_SUBMIT_SCORE
+)
 
 console = Console()
 
@@ -97,13 +100,18 @@ async def auto_apply(page, job: JobMatch, profile: UserProfile) -> bool:
             file_inputs = page.locator('input[type="file"]')
             if await file_inputs.count() > 0:
                 await file_inputs.first.set_input_files(job.tailored_resume_path)
-                
+
         # 4. Submit
         submit_buttons = page.locator('button:has-text("Submit"), button:has-text("Apply")')
         if await submit_buttons.count() > 0:
-            # await submit_buttons.first.click()
-            console.print(f"[green]Simulated Submit clicked for {job.company}[/green]")
-            log_telemetry("Dispatcher", f"Successfully applied to {job.company}! Dashboard updated.")
+            match_score = job.match_score or 0
+            if AUTO_SUBMIT_ENABLED and match_score >= MIN_AUTO_SUBMIT_SCORE:
+                await submit_buttons.first.click()
+                console.print(f"[bold green]REAL Submit clicked for {job.company} (Match Score: {match_score}%)[/bold green]")
+                log_telemetry("Dispatcher", f"Real application submitted to {job.company} (Score: {match_score}%)")
+            else:
+                console.print(f"[green]Simulated Submit for {job.company} (Score: {match_score}%, Required: {MIN_AUTO_SUBMIT_SCORE}%, Enabled: {AUTO_SUBMIT_ENABLED})[/green]")
+                log_telemetry("Dispatcher", f"Simulated submission completed for {job.company}")
             return True
             
         return False

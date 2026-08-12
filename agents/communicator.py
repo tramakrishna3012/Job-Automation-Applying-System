@@ -46,38 +46,61 @@ async def generate_personalized_cold_email(contact_name: str, company: str, stat
         temperature=0.7
     )
 
+from core.db import log_email, log_telemetry
+from core.gmail import send_gmail
+
 def send_cold_email(contact_name: str, email: str, company: str, state: ApplicationState):
-    """Sends a cold email to the HR contact."""
+    """Generates personalized cold email and sends via Gmail API, logging outcome to DB."""
     try:
         email_body = asyncio.run(generate_personalized_cold_email(contact_name, company, state))
-        console.print(f"[cyan]📧 Sending Requesty-generated cold email to {contact_name} ({email}) at {company}:[/cyan]")
-        console.print(f"[dim]{email_body[:120]}...[/dim]\n")
+        target_role = state.get("target_role", "Engineering")
+        subject = f"Exploring {target_role} Opportunities at {company}"
+
+        console.print(f"[cyan]📧 Generating cold email to {contact_name} ({email}) at {company}...[/cyan]")
+        sent_success = send_gmail(to_email=email, subject=subject, body=email_body)
+
+        status = "sent" if sent_success else "draft"
+        log_email(
+            direction="outbound",
+            recipient_name=contact_name,
+            recipient_email=email,
+            company=company,
+            subject=subject,
+            body=email_body,
+            status=status
+        )
+        log_telemetry("Communicator", f"Cold email {status} for {contact_name} at {company}")
     except Exception as e:
         console.print(f"[red]Failed to generate or send cold email: {e}[/red]")
 
 def run_communicator(state: ApplicationState) -> ApplicationState:
-    console.print("\n[bold blue]--- Phase 5: Timed Cold Emails via Requesty AI Gateway ---[/bold blue]")
-    
-    do_outreach = Prompt.ask("Do you have an HR contact list for cold outreach? (y/n)", choices=["y", "n"], default="n")
-    if do_outreach == "y":
-        hr_list_path = Prompt.ask("Please provide the path to your HR list (.xlsx or .csv)")
-        df = ingest_hr_list(hr_list_path)
-        
-        if not df.empty and 'Email' in df.columns and 'Contact Name' in df.columns and 'Company' in df.columns:
-            console.print(f"[green]Loaded {len(df)} contacts.[/green]")
-            if not scheduler.running:
-                scheduler.start()
-                
-            for idx, row in df.iterrows():
-                scheduler.add_job(
-                    send_cold_email,
-                    'interval', 
-                    minutes=10 * (idx + 1),
-                    args=[row['Contact Name'], row['Email'], row['Company'], state],
-                    max_instances=1
-                )
-            console.print("[green]Cold emails scheduled successfully![/green]")
-        else:
-            console.print("[red]Invalid HR list format. Expected columns: 'Contact Name', 'Email', 'Company'.[/red]")
-            
+    console.print("\n[bold blue]--- Phase 5: Timed Cold Emails via AI Gateway ---[/bold blue]")
+
+    # Look up HR list path from state (set via API upload or CLI)
+    hr_list_path = state.get("hr_list_path")
+    if not hr_list_path or not os.path.exists(hr_list_path):
+        console.print("[yellow]No HR contact list provided in state. Skipping cold email outreach.[/yellow]")
+        return state
+
+    df = ingest_hr_list(hr_list_path)
+    if not df.empty and 'Email' in df.columns and 'Contact Name' in df.columns and 'Company' in df.columns:
+        console.print(f"[green]Loaded {len(df)} HR contacts for outreach.[/green]")
+        log_telemetry("Communicator", f"Scheduling cold email outreach campaign for {len(df)} contacts")
+
+        if not scheduler.running:
+            scheduler.start()
+
+        for idx, row in df.iterrows():
+            scheduler.add_job(
+                send_cold_email,
+                'interval',
+                minutes=10 * (idx + 1),
+                args=[row['Contact Name'], row['Email'], row['Company'], state],
+                max_instances=1
+            )
+        console.print("[green]Cold email outreach campaign scheduled successfully![/green]")
+    else:
+        console.print("[red]Invalid HR list format. Expected columns: 'Contact Name', 'Email', 'Company'.[/red]")
+
     return state
+

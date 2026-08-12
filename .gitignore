@@ -16,6 +16,7 @@ ENV/
 .env.*
 !.env.example
 credentials.json
+.gmail_token.json
 token.json
 
 # Next.js / Node

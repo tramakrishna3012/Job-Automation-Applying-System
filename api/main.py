@@ -18,13 +18,99 @@ from agents.editor import tailor_for_job
 from agents.visibility import LINKEDIN_BRANDING_SYSTEM_PROMPT, GITHUB_BRANDING_SYSTEM_PROMPT
 from agents.tracker import classify_email_intent
 from core.ai_gateway import async_chat_completion
-from core.db import get_db_connection, log_telemetry
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from agents.communicator import ingest_hr_list
+from core.db import get_db_connection, log_telemetry, get_emails, register_telemetry_listener, unregister_telemetry_listener
+
+active_connections = set()
+scheduler = AsyncIOScheduler()
+scheduler_enabled = True
+
+def broadcast_telemetry(agent_name: str, message: str):
+    import json
+    data = json.dumps({"agent": agent_name, "message": message, "time": asyncio.get_event_loop().time() if asyncio.get_event_loop().is_running() else 0})
+    for ws in list(active_connections):
+        try:
+            asyncio.create_task(ws.send_text(data))
+        except Exception:
+            pass
+
+register_telemetry_listener(broadcast_telemetry)
+
+async def run_recurring_pipeline():
+    if not scheduler_enabled:
+        return
+    if "current" in active_state:
+        state = active_state["current"]
+        log_telemetry("Scheduler", f"Triggering automated 6-hour pipeline execution for role '{state.get('target_role')}'")
+        graph_app.invoke(state)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    if not scheduler.running:
+        scheduler.add_job(run_recurring_pipeline, 'interval', hours=6, id='pipeline_cycle')
+        scheduler.start()
+        log_telemetry("System", "APScheduler autonomous pipeline runner initialized (6-hour cycle)")
     yield
+    scheduler.shutdown()
 
 app = FastAPI(title="Job Application Agent API (Requesty AI Gateway Enabled)", lifespan=lifespan)
+
+@app.get("/api/emails")
+async def get_emails_endpoint(direction: str = None, classification: str = None, limit: int = 50):
+    """Retrieves logged outbound cold emails and inbound classified replies."""
+    emails = get_emails(direction=direction, classification=classification, limit=limit)
+    return {"emails": emails}
+
+@app.post("/api/hr-contacts/upload")
+async def upload_hr_contacts(file: UploadFile = File(...)):
+    """Uploads an HR contact list (.csv or .xlsx) for cold email campaign outreach."""
+    try:
+        suffix = ".xlsx" if file.filename.endswith(".xlsx") else ".csv"
+        fd, temp_path = tempfile.mkstemp(suffix=suffix)
+        os.close(fd)
+        with open(temp_path, "wb") as f:
+            f.write(await file.read())
+
+        df = ingest_hr_list(temp_path)
+        if df.empty:
+            raise HTTPException(status_code=400, detail="Invalid or empty HR contact list format.")
+
+        if "current" in active_state:
+            active_state["current"]["hr_list_path"] = temp_path
+
+        log_telemetry("Communicator", f"Ingested {len(df)} HR contacts from uploaded file: {file.filename}")
+        return {"message": "HR contacts uploaded successfully", "count": len(df), "path": temp_path}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/scheduler/toggle")
+async def toggle_scheduler(enabled: bool):
+    global scheduler_enabled
+    scheduler_enabled = enabled
+    log_telemetry("Scheduler", f"Autonomous pipeline scheduler set to: {scheduler_enabled}")
+    return {"scheduler_enabled": scheduler_enabled}
+
+@app.get("/api/scheduler/status")
+async def get_scheduler_status():
+    return {
+        "scheduler_enabled": scheduler_enabled,
+        "running": scheduler.running,
+        "jobs": [j.id for j in scheduler.get_jobs()]
+    }
+
+@app.websocket("/api/stream")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    active_connections.add(websocket)
+    try:
+        while True:
+            data = await websocket.receive_text()
+            await websocket.send_text(f"Telemetry stream active: {data}")
+    except Exception:
+        pass
+    finally:
+        active_connections.discard(websocket)
 
 app.add_middleware(
     CORSMiddleware,

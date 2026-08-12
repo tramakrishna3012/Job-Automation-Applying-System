@@ -11,6 +11,7 @@ import {
   FileText,
   Share2,
   Link2,
+  Mail,
   LogOut,
   ChevronLeft,
   Sparkles,
@@ -21,6 +22,7 @@ const NAV_ITEMS = [
   { href: "/", label: "Command Center", icon: LayoutDashboard },
   { href: "/pipeline", label: "Job Pipeline", icon: Kanban },
   { href: "/resume-studio", label: "Resume Studio", icon: FileText },
+  { href: "/emails", label: "Emails & Outreach", icon: Mail },
   { href: "/branding", label: "Branding Hub", icon: Share2 },
   { href: "/connections", label: "Connections", icon: Link2 },
 ];

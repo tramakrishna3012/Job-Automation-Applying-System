@@ -70,6 +70,19 @@ export interface BrandingPost {
   type: "linkedin" | "github";
 }
 
+export interface EmailLog {
+  id: string;
+  timestamp: string;
+  direction: "outbound" | "inbound";
+  recipient_name?: string;
+  recipient_email?: string;
+  company?: string;
+  subject?: string;
+  body?: string;
+  classification?: "Interview" | "Rejected" | "Interested" | "Pending";
+  status: string;
+}
+
 // ── Fetch Helpers ──────────────────────────────────────
 async function fetchJSON<T>(url: string): Promise<T> {
   const res = await fetch(`${API_BASE}${url}`);
@@ -112,4 +125,13 @@ export const api = {
 
   generateBrandingPost: (type: string) =>
     postJSON<{ post: string }>("/branding/generate", { type }),
+
+  emails: (params?: { direction?: string; classification?: string }) => {
+    const query = new URLSearchParams(params as Record<string, string>).toString();
+    return fetchJSON<{ emails: EmailLog[] }>(`/emails?${query}`).then((r) => r.emails);
+  },
+
+  uploadHrContacts: (formData: FormData) =>
+    postJSON<{ message: string; count: number }>("/hr-contacts/upload", formData),
 };
+

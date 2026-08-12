@@ -3,32 +3,44 @@ import json
 from typing import List, Dict, Any, Optional, Type, TypeVar
 from openai import OpenAI, AsyncOpenAI
 from pydantic import BaseModel
-from core.config import REQUESTY_API_KEY, REQUESTY_MODEL, REQUESTY_BASE_URL
+from core.config import (
+    REQUESTY_API_KEY, REQUESTY_MODEL, REQUESTY_BASE_URL,
+    MODAL_ENDPOINT_URL, MODAL_API_KEY, MODAL_MODEL, AI_PROVIDER
+)
 from rich.console import Console
 
 console = Console()
 
 T = TypeVar("T", bound=BaseModel)
 
-def get_requesty_client() -> OpenAI:
-    """Returns a synchronous OpenAI client configured for Requesty router gateway."""
+def get_active_llm_config() -> tuple[str, str, str]:
+    """Returns (base_url, api_key, default_model) based on AI_PROVIDER setting."""
+    if AI_PROVIDER == "modal" and MODAL_ENDPOINT_URL:
+        return (
+            MODAL_ENDPOINT_URL,
+            MODAL_API_KEY or "modal_key",
+            MODAL_MODEL
+        )
+    
+    # Default to Requesty Gateway
     api_key = REQUESTY_API_KEY or os.getenv("REQUESTY_API_KEY")
     if not api_key:
         console.print("[bold red]Warning: REQUESTY_API_KEY is not set in environment or config.[/bold red]")
-    return OpenAI(
-        base_url=REQUESTY_BASE_URL,
-        api_key=api_key or "missing_key",
+    return (
+        REQUESTY_BASE_URL,
+        api_key or "missing_key",
+        REQUESTY_MODEL
     )
 
+def get_requesty_client() -> OpenAI:
+    """Returns a synchronous OpenAI client configured for the active gateway (Requesty or Modal)."""
+    base_url, api_key, _ = get_active_llm_config()
+    return OpenAI(base_url=base_url, api_key=api_key)
+
 def get_async_requesty_client() -> AsyncOpenAI:
-    """Returns an asynchronous OpenAI client configured for Requesty router gateway."""
-    api_key = REQUESTY_API_KEY or os.getenv("REQUESTY_API_KEY")
-    if not api_key:
-        console.print("[bold red]Warning: REQUESTY_API_KEY is not set in environment or config.[/bold red]")
-    return AsyncOpenAI(
-        base_url=REQUESTY_BASE_URL,
-        api_key=api_key or "missing_key",
-    )
+    """Returns an asynchronous OpenAI client configured for the active gateway (Requesty or Modal)."""
+    base_url, api_key, _ = get_active_llm_config()
+    return AsyncOpenAI(base_url=base_url, api_key=api_key)
 
 async def async_chat_completion(
     messages: List[Dict[str, str]],
@@ -37,9 +49,10 @@ async def async_chat_completion(
     temperature: float = 0.7,
     response_format: Optional[Dict[str, Any]] = None,
 ) -> str:
-    """Sends a chat completion request via Requesty OpenAI client with resilient error handling."""
+    """Sends a chat completion request via OpenAI-compatible client with resilient error handling."""
     client = get_async_requesty_client()
-    target_model = model or REQUESTY_MODEL
+    _, _, default_model = get_active_llm_config()
+    target_model = model or default_model
     
     formatted_messages = []
     if system_prompt:
