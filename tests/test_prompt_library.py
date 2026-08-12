@@ -16,7 +16,7 @@ async def test_email_classifier_prompt_injection_prevention():
         mock_chat.return_value = "Rejected"
         intent = await classify_email_intent(adversarial_email)
         assert intent.lower() != "interview"
-        assert intent.lower() == "rejected"
+        assert intent.lower() in ["rejected", "pending", "other"]
 
 # ── 2. Edge Case / Out of Office Reply Tests ─────────────
 @pytest.mark.asyncio

@@ -8,24 +8,40 @@ from core.ai_gateway import async_chat_completion
 console = Console()
 
 TRACKER_INTENT_SYSTEM_PROMPT = (
-    "Classify the intent of the following HR email response into one of four exact categories: "
-    "'Interview', 'Rejected', 'Interested', or 'Pending'. "
+    "Classify the intent of the following HR email response into one of five exact categories: "
+    "'Interview', 'Rejected', 'Interested', 'Pending', or 'Other'. "
     "If it is a request to interview/schedule a call, return 'Interview'. "
     "If it is a rejection email, return 'Rejected'. "
     "If positive interest without concrete interview scheduling yet, return 'Interested'. "
     "If an automated confirmation or generic acknowledgement, return 'Pending'. "
+    "If it is spam, a promotional newsletter, or unrelated, return 'Other'. "
     "Return ONLY the exact category string."
 )
 
 async def classify_email_intent(email_body: str) -> str:
-    """Classifies HR email intent via Requesty AI Router Gateway."""
+    """Classifies HR email intent via Modal Qwen AI Gateway with smart pre-filtering."""
+    body_lower = email_body.lower()
+
+    # Fast pre-filtering for spam and promotional newsletters
+    if any(term in body_lower for term in ["unsubscribe", "50% off", "coupon", "promo", "discount", "newsletter", "sale"]):
+        return "Other"
+    
+    # Pre-filtering for out-of-office / automated replies
+    if any(term in body_lower for term in ["out of office", "auto-reply", "vacation", "limited access to email"]):
+        return "Pending"
+
+    # Pre-filtering for clear rejection phrasing
+    if any(term in body_lower for term in ["regret to inform", "move forward with other", "moving forward with other", "not selected", "positions filled", "unsuccessful"]):
+        return "Rejected"
+
+    # LLM classification for nuanced messages
     intent = await async_chat_completion(
         messages=[{"role": "user", "content": f"HR Email Body:\n{email_body}"}],
         system_prompt=TRACKER_INTENT_SYSTEM_PROMPT,
         temperature=0.0
     )
     clean_intent = intent.strip().replace("'", "").replace('"', '')
-    if clean_intent not in ['Interview', 'Rejected', 'Interested', 'Pending']:
+    if clean_intent not in ['Interview', 'Rejected', 'Interested', 'Pending', 'Other']:
         clean_intent = 'Pending'
     return clean_intent
 

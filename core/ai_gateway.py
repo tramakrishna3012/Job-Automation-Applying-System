@@ -73,7 +73,15 @@ async def async_chat_completion(
         if "LinkedIn" in str(system_prompt) or "LinkedIn" in user_query:
             return "🚀 Thrilled to showcase our autonomous job application agent system powered by Modal Qwen3.6-35B AI Gateway & Neon pgvector! Streamlining career growth with cutting-edge AI orchestration. #AI #SoftwareEngineering #Automation"
         elif "classify" in str(system_prompt).lower() or "intent" in str(system_prompt).lower():
-            return "Interview"
+            lower_query = user_query.lower()
+            if any(term in lower_query for term in ["unsubscribe", "coupon", "promo", "discount", "sale", "newsletter"]):
+                return "Other"
+            elif any(term in lower_query for term in ["regret to inform", "moving forward with other", "not selected", "unfortunately"]):
+                return "Rejected"
+            elif any(term in lower_query for term in ["interview", "zoom", "schedule", "call", "calendly", "phone screen"]):
+                return "Interview"
+            else:
+                return "Pending"
         else:
             return f"Processed automated response via Modal Qwen3.6 AI Gateway for query: {user_query[:50]}"
 
