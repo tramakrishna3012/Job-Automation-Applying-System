@@ -1,10 +1,10 @@
 "use client";
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { useState } from "react";
-import { api, EmailLog } from "@/lib/api";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { api, EmailLog, HRContact } from "@/lib/api";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -12,7 +12,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
 } from "@/components/ui/dialog";
 import { cn, formatDate, formatTime } from "@/lib/utils";
 import {
@@ -28,10 +27,11 @@ import {
   MessageSquare,
   FileSpreadsheet,
   Loader2,
+  UserCheck,
 } from "lucide-react";
 
 function ClassificationBadge({ classification }: { classification?: string }) {
-  if (!classification) return <Badge variant="outline">Unclassified</Badge>;
+  if (!classification) return <Badge variant="outline" className="text-[9px] bg-[#1b254b] text-[#a3aed0] border-[#1b254b]">Unclassified</Badge>;
 
   const config = {
     Interview: { label: "Interview", variant: "success" as const, icon: CheckCircle2 },
@@ -41,7 +41,7 @@ function ClassificationBadge({ classification }: { classification?: string }) {
   }[classification] || { label: classification, variant: "outline" as const, icon: MessageSquare };
 
   return (
-    <Badge variant={config.variant} className="text-[10px] gap-1">
+    <Badge variant={config.variant} className="text-[9px] gap-1">
       <config.icon className="w-3 h-3" />
       {config.label}
     </Badge>
@@ -56,13 +56,18 @@ export default function EmailsPage() {
   const [uploading, setUploading] = useState(false);
   const [uploadMessage, setUploadMessage] = useState<string | null>(null);
 
-  const { data: emails = [], isLoading } = useQuery({
+  const { data: emails = [], isLoading: emailsLoading } = useQuery({
     queryKey: ["emails", filterDirection, filterClassification],
     queryFn: () =>
       api.emails({
         direction: filterDirection === "all" ? undefined : filterDirection,
         classification: filterClassification === "all" ? undefined : filterClassification,
       }),
+  });
+
+  const { data: hrContacts = [], isLoading: contactsLoading } = useQuery({
+    queryKey: ["hrContacts"],
+    queryFn: api.getHrContacts,
   });
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -76,10 +81,11 @@ export default function EmailsPage() {
 
     try {
       const res = await api.uploadHrContacts(formData);
-      setUploadMessage(`Successfully loaded ${res.count} HR contacts for cold outreach.`);
+      setUploadMessage(`Successfully loaded ${res.count} HR contacts for position outreach.`);
       queryClient.invalidateQueries({ queryKey: ["emails"] });
-    } catch (err: unknown) {
-      setUploadMessage("Failed to upload HR contact list.");
+      queryClient.invalidateQueries({ queryKey: ["hrContacts"] });
+    } catch (err: any) {
+      setUploadMessage(err?.message || "Failed to upload HR contact list.");
     } finally {
       setUploading(false);
     }
@@ -90,20 +96,20 @@ export default function EmailsPage() {
   const interviewCount = emails.filter((e) => e.classification === "Interview").length;
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
-      {/* Header */}
+    <div className="space-y-6">
+      {/* Horizon Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Emails & Outreach Campaign</h1>
-          <p className="text-sm text-slate-500 mt-0.5">
-            Automated cold email outreach and AI-classified inbound reply tracker
+          <h2 className="text-xl font-bold text-white tracking-tight">Emails & Cold Outreach Hub</h2>
+          <p className="text-xs text-[#a3aed0] mt-0.5">
+            Automated contact ingestion, position-tailored cold emails, and AI response tracking
           </p>
         </div>
 
         {/* Upload HR Contacts Button */}
-        <label className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-semibold text-xs shadow-lg shadow-sky-500/20 cursor-pointer w-fit">
+        <label className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-[#868CFF] to-[#4318FF] text-white font-bold text-xs shadow-lg shadow-[#4318FF]/30 hover:shadow-[#4318FF]/50 transition-all cursor-pointer w-fit">
           {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-          Upload HR Contacts (.csv / .xlsx)
+          Upload Contact List (.csv / .xlsx)
           <input
             type="file"
             accept=".csv, .xlsx"
@@ -115,155 +121,181 @@ export default function EmailsPage() {
       </div>
 
       {uploadMessage && (
-        <div className="p-3 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-400 text-xs flex items-center gap-2">
-          <FileSpreadsheet className="w-4 h-4" />
-          {uploadMessage}
+        <div className="p-3.5 rounded-2xl bg-[#01b574]/15 border border-[#01b574]/30 text-[#01b574] text-xs flex items-center gap-2 animate-in fade-in">
+          <FileSpreadsheet className="w-4 h-4 shrink-0" />
+          <span>{uploadMessage}</span>
         </div>
       )}
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center">
-              <Send className="w-5 h-5 text-sky-400" />
+      {/* Horizon Stat Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+        <div className="p-5 rounded-[20px] bg-[#111c44] border border-[#1b254b] shadow-xl">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-full bg-[#1b254b] text-[#00f2fe] flex items-center justify-center">
+              <Send className="w-5 h-5" />
             </div>
             <div>
-              <div className="text-xl font-bold text-white">{outboundCount}</div>
-              <div className="text-[10px] text-slate-500">Outbound Cold Emails</div>
+              <div className="text-2xl font-extrabold text-white">{outboundCount}</div>
+              <div className="text-[10px] font-bold text-[#a3aed0] uppercase tracking-wider">Outbound Drafts & Sent</div>
             </div>
           </div>
-        </Card>
+        </div>
 
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
-              <Inbox className="w-5 h-5 text-purple-400" />
+        <div className="p-5 rounded-[20px] bg-[#111c44] border border-[#1b254b] shadow-xl">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-full bg-[#1b254b] text-[#7551ff] flex items-center justify-center">
+              <Inbox className="w-5 h-5" />
             </div>
             <div>
-              <div className="text-xl font-bold text-white">{inboundCount}</div>
-              <div className="text-[10px] text-slate-500">Inbound Classified Replies</div>
+              <div className="text-2xl font-extrabold text-white">{inboundCount}</div>
+              <div className="text-[10px] font-bold text-[#a3aed0] uppercase tracking-wider">Inbound Replies</div>
             </div>
           </div>
-        </Card>
+        </div>
 
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-              <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+        <div className="p-5 rounded-[20px] bg-[#111c44] border border-[#1b254b] shadow-xl">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-full bg-[#1b254b] text-[#01b574] flex items-center justify-center">
+              <CheckCircle2 className="w-5 h-5" />
             </div>
             <div>
-              <div className="text-xl font-bold text-white">{interviewCount}</div>
-              <div className="text-[10px] text-slate-500">Interview Invites</div>
+              <div className="text-2xl font-extrabold text-white">{interviewCount}</div>
+              <div className="text-[10px] font-bold text-[#a3aed0] uppercase tracking-wider">Interviews Scheduled</div>
             </div>
           </div>
-        </Card>
+        </div>
       </div>
 
-      {/* Filters & Table */}
-      <Card>
-        <CardHeader className="pb-3 border-b border-white/[0.06]">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Mail className="w-4 h-4 text-sky-400" />
-              Campaign Email Log
-            </CardTitle>
-
-            <div className="flex flex-wrap items-center gap-2">
-              {/* Direction Filter */}
-              <div className="flex bg-white/[0.04] p-1 rounded-lg border border-white/[0.06]">
-                {(["all", "outbound", "inbound"] as const).map((dir) => (
-                  <button
-                    key={dir}
-                    onClick={() => setFilterDirection(dir)}
-                    className={cn(
-                      "px-3 py-1 text-xs rounded-md font-medium transition-colors capitalize cursor-pointer",
-                      filterDirection === dir ? "bg-sky-500/20 text-sky-400 font-semibold" : "text-slate-400 hover:text-white"
-                    )}
-                  >
-                    {dir}
-                  </button>
-                ))}
-              </div>
-
-              {/* Intent Filter */}
-              <select
-                value={filterClassification}
-                onChange={(e) => setFilterClassification(e.target.value)}
-                className="bg-white/[0.04] border border-white/[0.06] rounded-lg px-3 py-1 text-xs text-slate-300 focus:outline-none focus:border-sky-500/50 cursor-pointer"
-              >
-                <option value="all" className="bg-slate-900 text-white">All Intent Classifications</option>
-                <option value="Interview" className="bg-slate-900 text-white">Interview</option>
-                <option value="Interested" className="bg-slate-900 text-white">Interested</option>
-                <option value="Pending" className="bg-slate-900 text-white">Pending</option>
-                <option value="Rejected" className="bg-slate-900 text-white">Rejected</option>
-              </select>
+      {/* HR Ingested Contacts Campaign Table */}
+      {hrContacts.length > 0 && (
+        <Card>
+          <CardHeader className="flex-row items-center justify-between pb-4">
+            <div>
+              <CardTitle className="text-base text-white flex items-center gap-2">
+                <UserCheck className="w-4 h-4 text-[#7551ff]" />
+                Ingested Outreach Contacts ({hrContacts.length})
+              </CardTitle>
+              <CardDescription>Target position list & tailored email statuses</CardDescription>
             </div>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-[#1b254b] text-[#a3aed0] font-bold uppercase tracking-wider text-[10px]">
+                    <th className="pb-3 pr-4">Contact</th>
+                    <th className="pb-3 pr-4">Email</th>
+                    <th className="pb-3 pr-4">Company</th>
+                    <th className="pb-3 pr-4">Target Position</th>
+                    <th className="pb-3 text-right">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#1b254b]/50">
+                  {hrContacts.map((c) => (
+                    <tr key={c.id} className="hover:bg-[#1b254b]/30 transition-colors">
+                      <td className="py-3 pr-4 font-bold text-white">{c.contact_name}</td>
+                      <td className="py-3 pr-4 text-[#a3aed0] font-mono">{c.email}</td>
+                      <td className="py-3 pr-4 text-[#a3aed0]">{c.company}</td>
+                      <td className="py-3 pr-4 text-white font-medium">{c.position || "Hiring Manager"}</td>
+                      <td className="py-3 text-right">
+                        <Badge variant="outline" className="text-[10px] bg-[#1b254b] text-[#01b574] border-[#1b254b]">
+                          {c.status}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Main Email Logs Card */}
+      <Card>
+        <CardHeader className="flex-row items-center justify-between space-y-0 pb-4">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-base text-white">
+              <Mail className="w-4 h-4 text-[#7551ff]" />
+              Campaign Email Logs
+            </CardTitle>
+            <CardDescription>Filter outbound cold emails and inbound HR replies</CardDescription>
+          </div>
+          <div className="flex items-center gap-2">
+            <select
+              value={filterDirection}
+              onChange={(e) => setFilterDirection(e.target.value as any)}
+              className="bg-[#0b1437] border border-[#1b254b] rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none"
+            >
+              <option value="all">All Directions</option>
+              <option value="outbound">Outbound Only</option>
+              <option value="inbound">Inbound Only</option>
+            </select>
           </div>
         </CardHeader>
-        <CardContent className="pt-4">
-          {isLoading ? (
+        <CardContent>
+          {emailsLoading ? (
             <div className="space-y-3">
               {[...Array(5)].map((_, i) => (
-                <Skeleton key={i} className="h-12 w-full rounded-xl" />
+                <div key={i} className="flex items-center gap-4">
+                  <Skeleton className="h-10 w-10 rounded-full bg-[#1b254b]" />
+                  <div className="flex-1 space-y-1">
+                    <Skeleton className="h-3.5 w-1/3 bg-[#1b254b]" />
+                    <Skeleton className="h-3 w-1/2 bg-[#1b254b]" />
+                  </div>
+                </div>
               ))}
             </div>
-          ) : emails.length === 0 ? (
-            <div className="text-center py-12 text-slate-500 text-sm">
-              <Mail className="w-10 h-10 mx-auto mb-2 opacity-40 stroke-[1.5]" />
-              <p>No emails logged yet.</p>
-              <p className="text-xs text-slate-600 mt-1">Upload an HR list or run a pipeline cycle to start campaign activity.</p>
+          ) : !emails.length ? (
+            <div className="text-center py-14 text-[#a3aed0]">
+              <Mail className="w-12 h-12 mx-auto mb-3 opacity-30 stroke-[1.5]" />
+              <p className="text-sm font-semibold text-white">No email logs found</p>
+              <p className="text-xs mt-1">Upload an HR contact list above to initiate tailored position outreach.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead>
-                  <tr className="border-b border-white/[0.06] text-slate-500 font-semibold uppercase tracking-wider text-[10px]">
-                    <th className="pb-3 pl-2">Direction</th>
-                    <th className="pb-3">Recipient / Sender</th>
-                    <th className="pb-3">Company</th>
-                    <th className="pb-3">Subject</th>
-                    <th className="pb-3">Intent</th>
-                    <th className="pb-3">Timestamp</th>
-                    <th className="pb-3 pr-2 text-right">View</th>
+                  <tr className="border-b border-[#1b254b] text-[#a3aed0] font-bold uppercase tracking-wider text-[10px]">
+                    <th className="pb-3 pr-4 pl-2">Recipient / Sender</th>
+                    <th className="pb-3 pr-4">Company</th>
+                    <th className="pb-3 pr-4">Subject</th>
+                    <th className="pb-3 pr-4">Classification</th>
+                    <th className="pb-3 pr-4">Date</th>
+                    <th className="pb-3 text-right pr-2">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/[0.04]">
+                <tbody className="divide-y divide-[#1b254b]/50">
                   {emails.map((email) => (
-                    <motion.tr
-                      key={email.id}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="hover:bg-white/[0.02] transition-colors"
-                    >
-                      <td className="py-3 pl-2">
-                        <Badge
-                          variant={email.direction === "outbound" ? "default" : "purple"}
-                          className="text-[9px]"
-                        >
-                          {email.direction === "outbound" ? "Sent" : "Received"}
-                        </Badge>
+                    <tr key={email.id} className="hover:bg-[#1b254b]/30 transition-colors">
+                      <td className="py-3.5 pr-4 pl-2 font-bold text-white">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={cn(
+                              "w-2 h-2 rounded-full",
+                              email.direction === "outbound" ? "bg-[#00f2fe]" : "bg-[#7551ff]"
+                            )}
+                          />
+                          {email.recipient_name || email.recipient_email || "HR Manager"}
+                        </div>
                       </td>
-                      <td className="py-3 text-slate-200 font-medium">
-                        {email.recipient_name || email.recipient_email || "Contact"}
-                      </td>
-                      <td className="py-3 text-slate-300">{email.company || "N/A"}</td>
-                      <td className="py-3 text-slate-400 truncate max-w-[200px]">{email.subject || "No Subject"}</td>
-                      <td className="py-3">
+                      <td className="py-3.5 pr-4 text-[#a3aed0]">{email.company || "Company"}</td>
+                      <td className="py-3.5 pr-4 text-white font-medium max-w-xs truncate">{email.subject}</td>
+                      <td className="py-3.5 pr-4">
                         <ClassificationBadge classification={email.classification} />
                       </td>
-                      <td className="py-3 text-slate-500 font-mono text-[10px]">
-                        {formatDate(email.timestamp)} {formatTime(email.timestamp)}
+                      <td className="py-3.5 pr-4 text-[#a3aed0] font-mono text-[11px]">
+                        {formatDate(email.timestamp)}
                       </td>
-                      <td className="py-3 pr-2 text-right">
+                      <td className="py-3.5 text-right pr-2">
                         <button
                           onClick={() => setSelectedEmail(email)}
-                          className="p-1.5 rounded-lg text-slate-500 hover:text-sky-400 hover:bg-sky-500/10 transition-colors cursor-pointer"
+                          className="p-1.5 rounded-xl text-[#a3aed0] hover:text-white hover:bg-[#1b254b] transition-colors cursor-pointer"
                         >
-                          <Eye className="w-3.5 h-3.5" />
+                          <Eye className="w-4 h-4" />
                         </button>
                       </td>
-                    </motion.tr>
+                    </tr>
                   ))}
                 </tbody>
               </table>
@@ -272,34 +304,33 @@ export default function EmailsPage() {
         </CardContent>
       </Card>
 
-      {/* Email Body Detail Modal */}
+      {/* View Email Dialog */}
       <Dialog open={!!selectedEmail} onOpenChange={() => setSelectedEmail(null)}>
-        <DialogContent className="max-w-xl">
+        <DialogContent className="bg-[#111c44] border border-[#1b254b] text-white max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Mail className="w-4 h-4 text-sky-400" />
-              {selectedEmail?.subject || "Email Details"}
+            <DialogTitle className="text-lg font-bold text-white flex items-center justify-between">
+              <span>{selectedEmail?.subject}</span>
             </DialogTitle>
-            <DialogDescription>
-              {selectedEmail?.direction === "outbound" ? "Sent to" : "Received from"}{" "}
-              <span className="text-white font-medium">{selectedEmail?.recipient_name || selectedEmail?.recipient_email}</span> at{" "}
-              <span className="text-sky-400 font-medium">{selectedEmail?.company}</span>
-            </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 mt-2">
-            <div className="flex items-center justify-between text-xs border-b border-white/[0.06] pb-2">
-              <div className="flex items-center gap-2">
-                <span className="text-slate-500">Classification:</span>
-                <ClassificationBadge classification={selectedEmail?.classification} />
+          {selectedEmail && (
+            <div className="space-y-4 pt-2">
+              <div className="grid grid-cols-2 gap-4 p-3 rounded-2xl bg-[#0b1437] border border-[#1b254b] text-xs">
+                <div>
+                  <span className="text-[#a3aed0] block">Target Contact:</span>
+                  <span className="font-bold text-white">{selectedEmail.recipient_name || selectedEmail.recipient_email}</span>
+                </div>
+                <div>
+                  <span className="text-[#a3aed0] block">Company:</span>
+                  <span className="font-bold text-white">{selectedEmail.company || "N/A"}</span>
+                </div>
               </div>
-              <span className="text-slate-500 font-mono text-[11px]">{selectedEmail?.timestamp}</span>
-            </div>
 
-            <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-4 text-xs text-slate-300 leading-relaxed whitespace-pre-wrap font-mono">
-              {selectedEmail?.body || "No body content available."}
+              <div className="p-4 rounded-2xl bg-[#0b1437] border border-[#1b254b] font-mono text-xs leading-relaxed max-h-80 overflow-y-auto whitespace-pre-wrap">
+                {selectedEmail.body}
+              </div>
             </div>
-          </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

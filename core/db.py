@@ -1,7 +1,10 @@
 import json
 import psycopg2
+import bcrypt
+import jwt
+import datetime
 from psycopg2.extras import RealDictCursor
-from core.config import NEON_DATABASE_URL
+from core.config import NEON_DATABASE_URL, JWT_SECRET, JWT_ALGORITHM
 from rich.console import Console
 from typing import List, Dict, Any, Optional
 
@@ -27,10 +30,22 @@ def init_db():
                 # Enable pgvector extension
                 cur.execute("CREATE EXTENSION IF NOT EXISTS vector;")
                 
-                # Job Applications table
+                # 1. Users Table
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS users (
+                        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+                        email TEXT UNIQUE NOT NULL,
+                        password_hash TEXT NOT NULL,
+                        name TEXT,
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
+                
+                # 2. Job Applications Table with user_id
                 cur.execute("""
                     CREATE TABLE IF NOT EXISTS job_applications (
                         id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+                        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
                         date_applied TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
                         company TEXT NOT NULL,
                         role TEXT NOT NULL,
@@ -38,29 +53,34 @@ def init_db():
                         status TEXT
                     )
                 """)
+                cur.execute("ALTER TABLE job_applications ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES users(id) ON DELETE CASCADE;")
                 
-                # Agent Telemetry Logs table
+                # 3. Agent Telemetry Logs Table with user_id
                 cur.execute("""
                     CREATE TABLE IF NOT EXISTS agent_logs (
                         id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+                        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
                         timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
                         agent_name TEXT NOT NULL,
                         message TEXT NOT NULL
                     )
                 """)
+                cur.execute("ALTER TABLE agent_logs ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES users(id) ON DELETE CASCADE;")
                 
-                # Candidate Vector Profiles for pgvector matching
+                # 4. Candidate Vector Profiles with user_id
                 cur.execute("""
                     CREATE TABLE IF NOT EXISTS candidate_profiles (
                         id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-                        user_email TEXT NOT NULL UNIQUE,
+                        user_id UUID REFERENCES users(id) ON DELETE CASCADE UNIQUE,
+                        user_email TEXT NOT NULL,
                         profile_json JSONB NOT NULL,
                         skills_text TEXT NOT NULL,
                         embedding vector(1536)
                     )
                 """)
+                cur.execute("ALTER TABLE candidate_profiles ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES users(id) ON DELETE CASCADE;")
                 
-                # Job Description Vector Embeddings for hybrid search
+                # 5. Job Description Vector Embeddings
                 cur.execute("""
                     CREATE TABLE IF NOT EXISTS job_embeddings (
                         id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -72,10 +92,12 @@ def init_db():
                         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
                     )
                 """)
-                # Emails table (Cold Outreach & Inbound Classified Replies)
+
+                # 6. Emails Table with user_id
                 cur.execute("""
                     CREATE TABLE IF NOT EXISTS emails (
                         id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+                        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
                         timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
                         direction TEXT NOT NULL,
                         recipient_name TEXT,
@@ -87,8 +109,24 @@ def init_db():
                         status TEXT DEFAULT 'draft'
                     )
                 """)
+                cur.execute("ALTER TABLE emails ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES users(id) ON DELETE CASCADE;")
 
-                # Scraped URLs deduplication table (Jobcode blog + other job sources)
+                # 7. HR Contacts Outreach Table
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS hr_contacts (
+                        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+                        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+                        contact_name TEXT NOT NULL,
+                        email TEXT NOT NULL,
+                        company TEXT NOT NULL,
+                        position TEXT,
+                        status TEXT DEFAULT 'pending',
+                        email_draft TEXT,
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
+
+                # 8. Scraped URLs Table
                 cur.execute("""
                     CREATE TABLE IF NOT EXISTS scraped_urls (
                         url TEXT PRIMARY KEY,
@@ -97,15 +135,96 @@ def init_db():
                     )
                 """)
                 
-            console.print("[green]Neon DB with pgvector extension initialized successfully.[/green]")
+            console.print("[green]Neon DB schema with multi-user user_id constraints initialized successfully.[/green]")
         except Exception as e:
-            console.print(f"[red]Failed to initialize schema or pgvector: {e}[/red]")
+            console.print(f"[red]Failed to initialize schema: {e}[/red]")
         finally:
             conn.close()
 
-# Initialize schema on load
+# Initialize schema on module load
 init_db()
 
+# ── User Auth Helpers ────────────────────────────────────
+def hash_password(password: str) -> str:
+    """Hashes plain text password using bcrypt."""
+    salt = bcrypt.gensalt()
+    return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
+
+def verify_password(password: str, hashed: str) -> bool:
+    """Verifies plain text password against bcrypt hash."""
+    try:
+        return bcrypt.checkpw(password.encode("utf-8"), hashed.encode("utf-8"))
+    except Exception:
+        return False
+
+def create_jwt_token(user_id: str, email: str) -> str:
+    """Creates JWT access token valid for 30 days."""
+    payload = {
+        "sub": user_id,
+        "email": email,
+        "exp": datetime.datetime.utcnow() + datetime.timedelta(days=30),
+        "iat": datetime.datetime.utcnow(),
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+def decode_jwt_token(token: str) -> Optional[Dict[str, Any]]:
+    """Decodes JWT access token."""
+    try:
+        return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+    except Exception:
+        return None
+
+def create_user(email: str, password: str, name: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    """Registers a new user in Neon DB."""
+    conn = get_db_connection()
+    if not conn:
+        return None
+    try:
+        hashed = hash_password(password)
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO users (email, password_hash, name) VALUES (%s, %s, %s) RETURNING id, email, name, created_at",
+                (email.lower().strip(), hashed, name or email.split("@")[0].capitalize())
+            )
+            row = cur.fetchone()
+            return dict(row) if row else None
+    except Exception as e:
+        console.print(f"[red]User registration failed: {e}[/red]")
+        return None
+    finally:
+        conn.close()
+
+def get_user_by_email(email: str) -> Optional[Dict[str, Any]]:
+    """Fetches user by email."""
+    conn = get_db_connection()
+    if not conn:
+        return None
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, email, password_hash, name, created_at FROM users WHERE LOWER(email) = %s", (email.lower().strip(),))
+            row = cur.fetchone()
+            return dict(row) if row else None
+    except Exception:
+        return None
+    finally:
+        conn.close()
+
+def get_user_by_id(user_id: str) -> Optional[Dict[str, Any]]:
+    """Fetches user by ID."""
+    conn = get_db_connection()
+    if not conn:
+        return None
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, email, name, created_at FROM users WHERE id = %s::uuid", (user_id,))
+            row = cur.fetchone()
+            return dict(row) if row else None
+    except Exception:
+        return None
+    finally:
+        conn.close()
+
+# ── Telemetry & Listener Registry ────────────────────────
 telemetry_listeners = set()
 
 def register_telemetry_listener(callback):
@@ -114,77 +233,71 @@ def register_telemetry_listener(callback):
 def unregister_telemetry_listener(callback):
     telemetry_listeners.discard(callback)
 
-def log_telemetry(agent_name: str, message: str):
+def log_telemetry(agent_name: str, message: str, user_id: Optional[str] = None):
     conn = get_db_connection()
     if conn:
         try:
             with conn.cursor() as cur:
-                cur.execute(
-                    "INSERT INTO agent_logs (agent_name, message) VALUES (%s, %s)",
-                    (agent_name, message)
-                )
+                if user_id:
+                    cur.execute(
+                        "INSERT INTO agent_logs (user_id, agent_name, message) VALUES (%s::uuid, %s, %s)",
+                        (user_id, agent_name, message)
+                    )
+                else:
+                    cur.execute(
+                        "INSERT INTO agent_logs (agent_name, message) VALUES (%s, %s)",
+                        (agent_name, message)
+                    )
         except Exception as e:
             console.print(f"[red]Failed to insert telemetry: {e}[/red]")
         finally:
             conn.close()
 
-    # Notify live WebSocket listeners
     for callback in list(telemetry_listeners):
         try:
-            callback(agent_name, message)
+            callback(agent_name, message, user_id)
         except Exception:
             pass
 
-def save_candidate_profile_vector(email: str, profile_json: dict, skills_text: str, embedding: List[float]):
-    """Stores candidate profile and vector embedding in pgvector DB."""
+# ── Multi-Tenant Profile & Applications Helpers ──────────
+def save_candidate_profile_vector(user_id: str, email: str, profile_json: dict, skills_text: str, embedding: List[float]):
+    """Stores candidate profile tied to user_id in pgvector DB."""
     conn = get_db_connection()
     if conn:
         try:
             with conn.cursor() as cur:
                 vector_str = f"[{','.join(map(str, embedding))}]" if embedding else None
                 cur.execute("""
-                    INSERT INTO candidate_profiles (user_email, profile_json, skills_text, embedding)
-                    VALUES (%s, %s, %s, %s::vector)
-                    ON CONFLICT (user_email) DO UPDATE 
+                    INSERT INTO candidate_profiles (user_id, user_email, profile_json, skills_text, embedding)
+                    VALUES (%s::uuid, %s, %s, %s, %s::vector)
+                    ON CONFLICT (user_id) DO UPDATE 
                     SET profile_json = EXCLUDED.profile_json,
                         skills_text = EXCLUDED.skills_text,
-                        embedding = EXCLUDED.embedding
-                """, (email, json.dumps(profile_json), skills_text, vector_str))
-            console.print(f"[green]Stored candidate vector profile for {email}[/green]")
+                        embedding = EXCLUDED.embedding,
+                        user_email = EXCLUDED.user_email
+                """, (user_id, email, json.dumps(profile_json), skills_text, vector_str))
+            console.print(f"[green]Stored candidate profile for user {user_id}[/green]")
         except Exception as e:
             console.print(f"[red]Failed to save candidate vector profile: {e}[/red]")
         finally:
             conn.close()
 
-def hybrid_job_match_search(query_keywords: str, query_embedding: List[float], limit: int = 10) -> List[Dict[str, Any]]:
-    """Performs hybrid search combining PostgreSQL full-text search with pgvector cosine similarity."""
+def get_candidate_profile(user_id: str) -> Optional[dict]:
+    """Retrieves saved UserProfile for user_id."""
     conn = get_db_connection()
     if not conn:
-        return []
-        
+        return None
     try:
         with conn.cursor() as cur:
-            vector_str = f"[{','.join(map(str, query_embedding))}]" if query_embedding else None
-            
-            sql = """
-                SELECT 
-                    id, company, title, description, url,
-                    ts_rank_cd(to_tsvector('english', description), plainto_tsquery('english', %s)) AS keyword_score,
-                    (1 - (embedding <=> %s::vector)) AS vector_score,
-                    (0.5 * ts_rank_cd(to_tsvector('english', description), plainto_tsquery('english', %s)) +
-                     0.5 * (1 - (embedding <=> %s::vector))) AS hybrid_score
-                FROM job_embeddings
-                WHERE embedding IS NOT NULL
-                ORDER BY hybrid_score DESC
-                LIMIT %s;
-            """
-            cur.execute(sql, (query_keywords, vector_str, query_keywords, vector_str, limit))
-            return cur.fetchall()
-    except Exception as e:
-        console.print(f"[red]Hybrid pgvector search failed: {e}[/red]")
-        return []
+            cur.execute("SELECT profile_json FROM candidate_profiles WHERE user_id = %s::uuid", (user_id,))
+            row = cur.fetchone()
+            return row["profile_json"] if row else None
+    except Exception:
+        return None
     finally:
         conn.close()
+
+# ── Multi-Tenant Emails & HR Contact Helpers ─────────────
 def log_email(
     direction: str,
     recipient_name: Optional[str],
@@ -193,24 +306,25 @@ def log_email(
     subject: Optional[str],
     body: Optional[str],
     classification: Optional[str] = None,
-    status: str = "draft"
+    status: str = "draft",
+    user_id: Optional[str] = None
 ):
-    """Logs cold email outbound send or inbound reply into Neon DB."""
+    """Logs cold email outbound send or inbound reply into Neon DB scoped to user_id."""
     conn = get_db_connection()
     if conn:
         try:
             with conn.cursor() as cur:
                 cur.execute("""
-                    INSERT INTO emails (direction, recipient_name, recipient_email, company, subject, body, classification, status)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                """, (direction, recipient_name, recipient_email, company, subject, body, classification, status))
+                    INSERT INTO emails (user_id, direction, recipient_name, recipient_email, company, subject, body, classification, status)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, (user_id, direction, recipient_name, recipient_email, company, subject, body, classification, status))
         except Exception as e:
             console.print(f"[red]Failed to log email: {e}[/red]")
         finally:
             conn.close()
 
-def get_emails(direction: Optional[str] = None, classification: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
-    """Retrieves logged emails filtered by direction or intent classification."""
+def get_emails(user_id: Optional[str] = None, direction: Optional[str] = None, classification: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+    """Retrieves logged emails for user_id."""
     conn = get_db_connection()
     if not conn:
         return []
@@ -218,6 +332,9 @@ def get_emails(direction: Optional[str] = None, classification: Optional[str] = 
         with conn.cursor() as cur:
             query = "SELECT * FROM emails WHERE 1=1"
             params = []
+            if user_id:
+                query += " AND user_id = %s::uuid"
+                params.append(user_id)
             if direction:
                 query += " AND direction = %s"
                 params.append(direction)
@@ -230,6 +347,36 @@ def get_emails(direction: Optional[str] = None, classification: Optional[str] = 
             return cur.fetchall()
     except Exception as e:
         console.print(f"[red]Failed to fetch emails: {e}[/red]")
+        return []
+    finally:
+        conn.close()
+
+def save_hr_contacts_batch(user_id: str, contacts: List[Dict[str, Any]]):
+    """Inserts a batch of HR contacts scoped to user_id."""
+    conn = get_db_connection()
+    if conn:
+        try:
+            with conn.cursor() as cur:
+                for c in contacts:
+                    cur.execute("""
+                        INSERT INTO hr_contacts (user_id, contact_name, email, company, position, status, email_draft)
+                        VALUES (%s::uuid, %s, %s, %s, %s, %s, %s)
+                    """, (user_id, c.get("Contact Name", "HR Lead"), c.get("Email", ""), c.get("Company", ""), c.get("Position", "Hiring Manager"), "pending", c.get("Draft", "")))
+        except Exception as e:
+            console.print(f"[red]Failed to save HR contacts: {e}[/red]")
+        finally:
+            conn.close()
+
+def get_hr_contacts(user_id: str) -> List[Dict[str, Any]]:
+    """Retrieves HR contacts for user_id."""
+    conn = get_db_connection()
+    if not conn:
+        return []
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM hr_contacts WHERE user_id = %s::uuid ORDER BY created_at DESC", (user_id,))
+            return cur.fetchall()
+    except Exception:
         return []
     finally:
         conn.close()

@@ -1,6 +1,26 @@
 const API_BASE = "/api";
 
+// Helper to get stored auth token
+function getAuthToken(): string | null {
+  if (typeof window !== "undefined") {
+    return localStorage.getItem("session_token");
+  }
+  return null;
+}
+
 // ── Types ──────────────────────────────────────────────
+export interface User {
+  id: string;
+  email: string;
+  name?: string;
+}
+
+export interface AuthResponse {
+  message: string;
+  token: string;
+  user: User;
+}
+
 export interface Stats {
   discovered: number;
   applied: number;
@@ -83,25 +103,69 @@ export interface EmailLog {
   status: string;
 }
 
+export interface HRContact {
+  id: string;
+  contact_name: string;
+  email: string;
+  company: string;
+  position?: string;
+  status: string;
+  email_draft?: string;
+  created_at?: string;
+}
+
 // ── Fetch Helpers ──────────────────────────────────────
 async function fetchJSON<T>(url: string): Promise<T> {
-  const res = await fetch(`${API_BASE}${url}`);
-  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  const token = getAuthToken();
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${API_BASE}${url}`, { headers });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: `API error: ${res.status}` }));
+    throw new Error(errorData.detail || `API error: ${res.status}`);
+  }
   return res.json();
 }
 
 async function postJSON<T>(url: string, body?: unknown): Promise<T> {
+  const token = getAuthToken();
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  if (!(body instanceof FormData)) {
+    headers["Content-Type"] = "application/json";
+  }
+
   const res = await fetch(`${API_BASE}${url}`, {
     method: "POST",
-    headers: body instanceof FormData ? {} : { "Content-Type": "application/json" },
+    headers,
     body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
   });
-  if (!res.ok) throw new Error(`API error: ${res.status}`);
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: `API error: ${res.status}` }));
+    throw new Error(errorData.detail || `API error: ${res.status}`);
+  }
   return res.json();
 }
 
 // ── API Functions ──────────────────────────────────────
 export const api = {
+  // Auth APIs
+  signup: (data: { email: string; password: string; name?: string }) =>
+    postJSON<AuthResponse>("/auth/signup", data),
+
+  login: (data: { email: string; password: string }) =>
+    postJSON<AuthResponse>("/auth/login", data),
+
+  getMe: () => fetchJSON<{ user: User }>("/auth/me").then((r) => r.user),
+
+  getProfile: () => fetchJSON<{ profile: UserProfile | null }>("/profile").then((r) => r.profile),
+
   health: () => fetchJSON<{ status: string }>("/health"),
 
   stats: () => fetchJSON<Stats>("/stats"),
@@ -133,5 +197,7 @@ export const api = {
 
   uploadHrContacts: (formData: FormData) =>
     postJSON<{ message: string; count: number }>("/hr-contacts/upload", formData),
-};
 
+  getHrContacts: () =>
+    fetchJSON<{ contacts: HRContact[] }>("/hr-contacts").then((r) => r.contacts),
+};

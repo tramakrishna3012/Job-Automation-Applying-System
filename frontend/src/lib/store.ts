@@ -1,17 +1,13 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-
-interface UserAuth {
-  email: string;
-  name: string;
-  token: string;
-}
+import { User, UserProfile } from "./api";
 
 interface AppState {
   // Auth
-  user: UserAuth | null;
+  user: User | null;
+  token: string | null;
   isAuthenticated: boolean;
-  login: (email: string, name: string) => void;
+  login: (user: User, token: string) => void;
   logout: () => void;
 
   // UI
@@ -20,7 +16,9 @@ interface AppState {
 
   // Profile
   profileOnboarded: boolean;
+  userProfile: UserProfile | null;
   setProfileOnboarded: (val: boolean) => void;
+  setUserProfile: (profile: UserProfile | null) => void;
 
   // Theme
   theme: "dark" | "light";
@@ -32,13 +30,20 @@ export const useAppStore = create<AppState>()(
     (set) => ({
       // Auth
       user: null,
+      token: null,
       isAuthenticated: false,
-      login: (email, name) =>
-        set({
-          user: { email, name, token: `sim_${Date.now()}_${Math.random().toString(36).slice(2)}` },
-          isAuthenticated: true,
-        }),
-      logout: () => set({ user: null, isAuthenticated: false }),
+      login: (user, token) => {
+        if (typeof window !== "undefined") {
+          localStorage.setItem("session_token", token);
+        }
+        set({ user, token, isAuthenticated: true });
+      },
+      logout: () => {
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("session_token");
+        }
+        set({ user: null, token: null, isAuthenticated: false, userProfile: null });
+      },
 
       // UI
       sidebarCollapsed: false,
@@ -46,7 +51,9 @@ export const useAppStore = create<AppState>()(
 
       // Profile
       profileOnboarded: false,
+      userProfile: null,
       setProfileOnboarded: (val) => set({ profileOnboarded: val }),
+      setUserProfile: (profile) => set({ userProfile: profile, profileOnboarded: !!profile }),
 
       // Theme
       theme: "dark",

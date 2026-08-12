@@ -53,7 +53,7 @@ async def extract_jd(page, url: str) -> str:
         if element:
             return element.get_text(separator="\n").strip()
 
-    console.print("[yellow]Falling back to Requesty AI Router for JD extraction...[/yellow]")
+    console.print("[yellow]Falling back to Modal Qwen AI Gateway for JD extraction...[/yellow]")
     body_text = soup.body.get_text(separator="\n", strip=True) if soup.body else ""
     body_text = body_text[:15000]
     
