@@ -61,16 +61,24 @@ def self_healing_node(node_name: str):
                 return func(state, *args, **kwargs)
             except Exception as e:
                 err_str = traceback.format_exc()
-                console.print(f"[bold red]🚨 Exception in Graph Node '{node_name}': {e}[/bold red]")
+                console.print(f"[bold red]ALERT: Exception in Graph Node '{node_name}': {e}[/bold red]")
                 log_telemetry("SelfHeal", f"Exception captured in node '{node_name}': {str(e)}")
 
                 try:
                     import asyncio
-                    proposal = asyncio.run(analyze_node_failure(node_name, err_str, str(state)[:1000]))
-                    console.print(f"[bold yellow]🛠️ Self-Heal Proposal ({proposal.risk_level.upper()} risk): {proposal.summary}[/bold yellow]")
-                    log_review_queue_item(node_name, proposal, err_str)
+                    try:
+                        loop = asyncio.get_running_loop()
+                    except RuntimeError:
+                        loop = None
+
+                    if loop and loop.is_running():
+                        task = loop.create_task(analyze_node_failure(node_name, err_str, str(state)[:1000]))
+                    else:
+                        proposal = asyncio.run(analyze_node_failure(node_name, err_str, str(state)[:1000]))
+                        console.print(f"[bold yellow]Self-Heal Proposal ({proposal.risk_level.upper()} risk): {proposal.summary}[/bold yellow]")
+                        log_review_queue_item(node_name, proposal, err_str)
                 except Exception as heal_err:
-                    console.print(f"[red]Self-healing analysis failed: {heal_err}[/red]")
+                    console.print(f"[red]Self-healing analysis notice: {heal_err}[/red]")
 
                 # Return un-mutated state so pipeline degrades gracefully instead of crashing server
                 return state
