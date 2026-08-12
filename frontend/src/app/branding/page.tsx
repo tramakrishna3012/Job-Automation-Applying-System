@@ -218,7 +218,7 @@ export default function BrandingPage() {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Linkedin className="w-4 h-4 text-sky-400" />
+              <LinkedinIcon className="w-4 h-4 text-sky-400" />
               LinkedIn Feed Preview
             </DialogTitle>
             <DialogDescription>How this post will appear on your LinkedIn feed</DialogDescription>

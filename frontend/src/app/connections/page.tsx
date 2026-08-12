@@ -6,8 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import {
-  Linkedin,
-  Github,
+  Code2,
   Globe,
   Shield,
   ShieldCheck,
@@ -20,6 +19,10 @@ import {
   Loader2,
   Check,
 } from "lucide-react";
+
+// Icon aliases for platform branding
+const Linkedin = Globe;
+const Github = Code2;
 
 interface PlatformConfig {
   id: string;
@@ -189,8 +192,6 @@ function PlatformCard({ platform }: { platform: PlatformConfig }) {
               >
                 {connecting ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
-                ) : status === "connected" ? (
-                  <Check className="w-4 h-4" />
                 ) : (
                   <Shield className="w-4 h-4" />
                 )}
