@@ -19,10 +19,10 @@ import {
 } from "lucide-react";
 
 const PIPELINE_STAGES = [
-  { key: "discovered", label: "Newly Ingested", icon: Inbox, color: "text-sky-400", borderColor: "border-sky-500/20", bgColor: "bg-sky-500/5" },
-  { key: "evaluating", label: "Evaluating Match", icon: FileSearch, color: "text-amber-400", borderColor: "border-amber-500/20", bgColor: "bg-amber-500/5" },
-  { key: "generating", label: "Resume Generating", icon: FileCog, color: "text-purple-400", borderColor: "border-purple-500/20", bgColor: "bg-purple-500/5" },
-  { key: "applied", label: "Successfully Applied", icon: CheckCircle2, color: "text-emerald-400", borderColor: "border-emerald-500/20", bgColor: "bg-emerald-500/5" },
+  { key: "discovered", label: "Newly Ingested", icon: Inbox, color: "text-[#00f2fe]", borderColor: "border-[#1b254b]", bgColor: "bg-[#1b254b]" },
+  { key: "evaluating", label: "Evaluating Match", icon: FileSearch, color: "text-[#ffb547]", borderColor: "border-[#1b254b]", bgColor: "bg-[#1b254b]" },
+  { key: "generating", label: "Resume Architect", icon: FileCog, color: "text-[#7551ff]", borderColor: "border-[#1b254b]", bgColor: "bg-[#1b254b]" },
+  { key: "applied", label: "Successfully Applied", icon: CheckCircle2, color: "text-[#01b574]", borderColor: "border-[#1b254b]", bgColor: "bg-[#1b254b]" },
 ];
 
 function MatchScoreRing({ score }: { score: number }) {
@@ -33,13 +33,13 @@ function MatchScoreRing({ score }: { score: number }) {
   return (
     <div className="relative w-10 h-10 flex items-center justify-center">
       <svg className="w-10 h-10 -rotate-90" viewBox="0 0 40 40">
-        <circle cx="20" cy="20" r={radius} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="3" />
+        <circle cx="20" cy="20" r={radius} fill="none" stroke="#1b254b" strokeWidth="3" />
         <circle
           cx="20"
           cy="20"
           r={radius}
           fill="none"
-          stroke={score >= 80 ? "#10b981" : score >= 60 ? "#f59e0b" : "#ef4444"}
+          stroke={score >= 80 ? "#01b574" : score >= 60 ? "#ffb547" : "#ee5d50"}
           strokeWidth="3"
           strokeLinecap="round"
           strokeDasharray={circumference}
@@ -83,21 +83,21 @@ function JobCard({ app }: { app: Application }) {
       layout
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.06] hover:border-white/[0.1] transition-all group"
+      className="p-4 rounded-[20px] bg-[#111c44] border border-[#1b254b] hover:border-[#7551ff]/40 transition-all shadow-xl hover:-translate-y-1 group"
     >
       <div className="flex items-start gap-3">
-        <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-white/[0.06] flex items-center justify-center shrink-0 text-xs font-bold text-white">
+        <div className="w-10 h-10 rounded-2xl bg-[#1b254b] text-[#7551ff] flex items-center justify-center shrink-0 text-sm font-bold shadow-md">
           {app.company.charAt(0)}
         </div>
         <div className="flex-1 min-w-0">
-          <h4 className="text-xs font-semibold text-white truncate">{app.role}</h4>
-          <p className="text-[10px] text-slate-500">{app.company}</p>
+          <h4 className="text-xs font-bold text-white truncate">{app.role}</h4>
+          <p className="text-[11px] text-[#a3aed0] mt-0.5">{app.company}</p>
         </div>
         <MatchScoreRing score={score} />
       </div>
-      <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-white/[0.04]">
-        <span className="text-[10px] text-slate-600 font-mono">{formatDate(app.date_applied)}</span>
-        <Badge variant="outline" className="text-[9px]">{app.status}</Badge>
+      <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-[#1b254b]">
+        <span className="text-[10px] text-[#a3aed0] font-mono">{formatDate(app.date_applied)}</span>
+        <Badge variant="outline" className="text-[9px] bg-[#1b254b] text-[#a3aed0] border-[#1b254b]">{app.status}</Badge>
       </div>
     </motion.div>
   );
@@ -114,21 +114,21 @@ export default function PipelinePage() {
   const stages = applications ? groupApplications(applications) : null;
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Job Pipeline</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Track jobs through your autonomous application pipeline</p>
+          <h2 className="text-xl font-bold text-white tracking-tight">Kanban Execution Board</h2>
+          <p className="text-xs text-[#a3aed0] mt-0.5">Autonomous job pipeline progression across 4 stages</p>
         </div>
-        <div className="flex items-center gap-1 rounded-xl bg-white/[0.03] border border-white/[0.06] p-1">
+        <div className="flex items-center gap-1 rounded-2xl bg-[#111c44] border border-[#1b254b] p-1">
           <button
             onClick={() => setViewMode("kanban")}
             className={cn(
-              "p-2 rounded-lg text-xs font-semibold transition-all cursor-pointer",
+              "p-2 rounded-xl text-xs font-bold transition-all cursor-pointer",
               viewMode === "kanban"
-                ? "bg-sky-500/10 text-sky-400 border border-sky-500/20"
-                : "text-slate-500 hover:text-white"
+                ? "bg-[#4318ff] text-white shadow-md shadow-[#4318ff]/30"
+                : "text-[#a3aed0] hover:text-white"
             )}
           >
             <Kanban className="w-4 h-4" />
@@ -136,10 +136,10 @@ export default function PipelinePage() {
           <button
             onClick={() => setViewMode("table")}
             className={cn(
-              "p-2 rounded-lg text-xs font-semibold transition-all cursor-pointer",
+              "p-2 rounded-xl text-xs font-bold transition-all cursor-pointer",
               viewMode === "table"
-                ? "bg-sky-500/10 text-sky-400 border border-sky-500/20"
-                : "text-slate-500 hover:text-white"
+                ? "bg-[#4318ff] text-white shadow-md shadow-[#4318ff]/30"
+                : "text-[#a3aed0] hover:text-white"
             )}
           >
             <Table className="w-4 h-4" />

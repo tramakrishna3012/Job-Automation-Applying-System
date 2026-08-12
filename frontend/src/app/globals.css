@@ -1,19 +1,23 @@
 @import "tailwindcss";
 
-/* ── Design System Tokens ─────────────────────────────── */
+/* ── Horizon UI Design System Tokens ─────────────────── */
 :root {
-  --background: #06070b;
-  --foreground: #e2e8f0;
-  --card: rgba(255, 255, 255, 0.03);
-  --card-border: rgba(255, 255, 255, 0.06);
-  --muted: #1e293b;
-  --muted-foreground: #94a3b8;
-  --accent-sky: #0ea5e9;
-  --accent-blue: #3b82f6;
-  --accent-emerald: #10b981;
-  --accent-purple: #8b5cf6;
-  --accent-amber: #f59e0b;
-  --accent-red: #ef4444;
+  --background: #0b1437; /* Horizon Navy 900 */
+  --foreground: #ffffff;
+  --card: #111c44;       /* Horizon Navy 800 Card */
+  --card-border: #1b254b;/* Horizon Navy 700 Border */
+  --muted: #1b254b;
+  --text-primary: #ffffff;
+  --text-secondary: #a3aed0; /* Horizon Secondary Text */
+  --text-muted: #707eae;     /* Horizon Muted Text */
+  --brand-500: #4318ff;     /* Horizon Brand Indigo */
+  --brand-400: #7551ff;     /* Horizon Brand Light Indigo */
+  --brand-linear: linear-gradient(135deg, #868CFF 0%, #4318FF 100%);
+  --accent-sky: #00f2fe;
+  --accent-emerald: #01b574; /* Horizon Green */
+  --accent-purple: #7551ff;
+  --accent-amber: #ffb547;  /* Horizon Yellow */
+  --accent-red: #ee5d50;    /* Horizon Red */
 }
 
 @theme inline {
@@ -26,7 +30,7 @@
 /* ── Base Styles ──────────────────────────────────────── */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+  scrollbar-color: rgba(163, 174, 208, 0.2) transparent;
 }
 
 *::-webkit-scrollbar {
@@ -39,12 +43,12 @@
 }
 
 *::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(163, 174, 208, 0.2);
   border-radius: 999px;
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(163, 174, 208, 0.4);
 }
 
 html {
@@ -52,67 +56,100 @@ html {
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans, "Inter", system-ui, sans-serif);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
 }
 
 /* ── Selection ────────────────────────────────────────── */
 ::selection {
-  background: rgba(14, 165, 233, 0.3);
+  background: rgba(67, 24, 255, 0.4);
   color: #ffffff;
 }
 
-/* ── Glass Card Utility ───────────────────────────────── */
-.glass-card {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+/* ── Horizon UI Card Component ────────────────────────── */
+.horizon-card {
+  background-color: #111c44;
+  border: 1px solid #1b254b;
+  border-radius: 20px;
+  box-shadow: 0px 18px 40px rgba(11, 20, 55, 0.5);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* ── Stat Glow Ring ───────────────────────────────────── */
+.horizon-card:hover {
+  border-color: rgba(117, 81, 255, 0.3);
+  transform: translateY(-2px);
+}
+
+/* ── Horizon Glass Card ───────────────────────────────── */
+.glass-card {
+  background: rgba(17, 28, 68, 0.85);
+  border: 1px solid rgba(27, 37, 75, 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 20px;
+}
+
+/* ── Horizon Gradient Button ──────────────────────────── */
+.horizon-gradient-btn {
+  background: linear-gradient(135deg, #868CFF 0%, #4318FF 100%);
+  color: #ffffff;
+  border-radius: 14px;
+  font-weight: 600;
+  box-shadow: 0px 10px 24px rgba(67, 24, 255, 0.3);
+  transition: all 0.2s ease;
+}
+
+.horizon-gradient-btn:hover {
+  box-shadow: 0px 14px 28px rgba(67, 24, 255, 0.45);
+  transform: translateY(-1px);
+}
+
+/* ── Horizon Icon Container ───────────────────────────── */
+.horizon-icon-box {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #1b254b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Stat Glow Rings ──────────────────────────────────── */
 .stat-glow-sky {
-  box-shadow: 0 0 0 1px rgba(14, 165, 233, 0.15), 0 8px 32px -8px rgba(14, 165, 233, 0.1);
+  box-shadow: 0 0 0 1px rgba(0, 242, 254, 0.2), 0 8px 32px -8px rgba(0, 242, 254, 0.15);
 }
 
 .stat-glow-emerald {
-  box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.15), 0 8px 32px -8px rgba(16, 185, 129, 0.1);
+  box-shadow: 0 0 0 1px rgba(1, 181, 116, 0.2), 0 8px 32px -8px rgba(1, 181, 116, 0.15);
 }
 
 .stat-glow-purple {
-  box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.15), 0 8px 32px -8px rgba(139, 92, 246, 0.1);
+  box-shadow: 0 0 0 1px rgba(117, 81, 255, 0.2), 0 8px 32px -8px rgba(117, 81, 255, 0.15);
 }
 
 .stat-glow-amber {
-  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.15), 0 8px 32px -8px rgba(245, 158, 11, 0.1);
+  box-shadow: 0 0 0 1px rgba(255, 181, 71, 0.2), 0 8px 32px -8px rgba(255, 181, 71, 0.15);
 }
 
 /* ── Match Score Ring ─────────────────────────────────── */
 .match-ring {
   background: conic-gradient(
-    var(--accent-sky) calc(var(--score, 0) * 1%),
-    rgba(255, 255, 255, 0.06) 0%
+    #4318ff calc(var(--score, 0) * 1%),
+    #1b254b 0%
   );
 }
 
-/* ── Animated Gradient Border ─────────────────────────── */
-@keyframes gradient-shift {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
+/* ── Custom Animations ────────────────────────────────── */
+@keyframes pulse-slow {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(1.03); }
 }
 
-.animated-border {
-  background: linear-gradient(135deg, rgba(14, 165, 233, 0.3), rgba(139, 92, 246, 0.3), rgba(14, 165, 233, 0.3));
-  background-size: 200% 200%;
-  animation: gradient-shift 4s ease infinite;
-}
-
-/* ── LinkedIn Preview Card Mock ───────────────────────── */
-.linkedin-card {
-  background: #1b1f23;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
+.animate-pulse-slow {
+  animation: pulse-slow 3s infinite ease-in-out;
 }

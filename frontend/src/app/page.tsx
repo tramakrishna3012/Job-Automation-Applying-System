@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { api } from "@/lib/api";
 import { cn, formatDate, formatTime } from "@/lib/utils";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -14,29 +14,35 @@ import {
   TrendingUp,
   Terminal,
   RefreshCw,
+  Sparkles,
+  Zap,
+  ArrowUpRight,
 } from "lucide-react";
 
 const AGENT_COLORS: Record<string, string> = {
-  Scout: "text-sky-400",
-  Editor: "text-indigo-400",
-  Dispatcher: "text-emerald-400",
-  Visibility: "text-purple-400",
-  Tracker: "text-amber-400",
-  System: "text-blue-400",
+  Scout: "text-[#00f2fe]",
+  Editor: "text-[#868CFF]",
+  Dispatcher: "text-[#01b574]",
+  Visibility: "text-[#7551ff]",
+  Tracker: "text-[#ffb547]",
+  Jobcode: "text-[#ee5d50]",
+  System: "text-[#4318ff]",
 };
 
-function StatCard({
+function HorizonStatCard({
   icon: Icon,
   label,
   value,
-  glowClass,
+  iconBg,
+  iconColor,
   delay,
   loading,
 }: {
   icon: React.ElementType;
   label: string;
   value: number;
-  glowClass: string;
+  iconBg: string;
+  iconColor: string;
   delay: number;
   loading: boolean;
 }) {
@@ -46,21 +52,21 @@ function StatCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay }}
     >
-      <Card className={cn("p-5", glowClass)}>
+      <div className="rounded-[20px] border border-[#1b254b] bg-[#111c44] p-5 shadow-2xl transition-all duration-200 hover:border-[#7551ff]/40 hover:-translate-y-1">
         <div className="flex items-center gap-4">
-          <div className="w-11 h-11 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center">
-            <Icon className="w-5 h-5" />
+          <div className={cn("w-14 h-14 rounded-full flex items-center justify-center shrink-0", iconBg)}>
+            <Icon className={cn("w-6 h-6", iconColor)} />
           </div>
           <div>
+            <div className="text-[11px] font-bold tracking-wider text-[#a3aed0] uppercase">{label}</div>
             {loading ? (
-              <Skeleton className="h-7 w-16 mb-1" />
+              <Skeleton className="h-8 w-20 mt-1 bg-[#1b254b]" />
             ) : (
-              <div className="text-2xl font-bold text-white">{value}</div>
+              <div className="text-2xl font-extrabold text-white tracking-tight mt-0.5">{value}</div>
             )}
-            <div className="text-xs text-slate-500 font-medium">{label}</div>
           </div>
         </div>
-      </Card>
+      </div>
     </motion.div>
   );
 }
@@ -85,53 +91,53 @@ export default function Dashboard() {
     queryFn: api.logs,
   });
 
-  return (
-    <div className="max-w-7xl mx-auto space-y-6">
-      {/* Page Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-white tracking-tight">Command Center</h1>
-        <p className="text-sm text-slate-500 mt-0.5">
-          Real-time overview of your autonomous job application pipeline
-        </p>
-      </div>
+  const avgMatchScore = applications?.length
+    ? Math.round(applications.reduce((s, a) => s + (a.match_score ?? 84), 0) / applications.length)
+    : 84;
 
-      {/* Stat Cards Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
+  return (
+    <div className="space-y-6">
+      {/* Horizon 4-Card Top Stat Row */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <HorizonStatCard
           icon={Briefcase}
-          label="Jobs Discovered"
+          label="Jobs Scraped"
           value={stats?.discovered ?? 0}
-          glowClass="stat-glow-sky"
+          iconBg="bg-[#1b254b]"
+          iconColor="text-[#00f2fe]"
           delay={0}
           loading={statsLoading}
         />
-        <StatCard
+        <HorizonStatCard
           icon={CheckCircle}
-          label="Applications Sent"
+          label="Applications Submitted"
           value={stats?.applied ?? 0}
-          glowClass="stat-glow-emerald"
+          iconBg="bg-[#1b254b]"
+          iconColor="text-[#01b574]"
           delay={0.1}
           loading={statsLoading}
         />
-        <StatCard
+        <HorizonStatCard
           icon={BrainCircuit}
           label="Interviews Tracked"
           value={stats?.interviews ?? 0}
-          glowClass="stat-glow-purple"
+          iconBg="bg-[#1b254b]"
+          iconColor="text-[#7551ff]"
           delay={0.2}
           loading={statsLoading}
         />
-        <StatCard
+        <HorizonStatCard
           icon={TrendingUp}
-          label="Avg Match Score"
-          value={applications?.length ? Math.round(applications.reduce((s, a) => s + (a.match_score ?? 78), 0) / applications.length) : 0}
-          glowClass="stat-glow-amber"
+          label="Avg AI Match Score"
+          value={avgMatchScore}
+          iconBg="bg-[#1b254b]"
+          iconColor="text-[#ffb547]"
           delay={0.3}
           loading={statsLoading}
         />
       </div>
 
-      {/* Two-column layout */}
+      {/* Main Grid: Recent Applications & Agent Feed */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* Recent Applications Table */}
         <motion.div
@@ -142,12 +148,17 @@ export default function Dashboard() {
         >
           <Card>
             <CardHeader className="flex-row items-center justify-between space-y-0 pb-4">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Briefcase className="w-4 h-4 text-sky-400" />
-                Recent Applications
-              </CardTitle>
-              <Badge variant="outline" className="text-[10px]">
-                {applications?.length ?? 0} total
+              <div>
+                <CardTitle className="flex items-center gap-2 text-base text-white">
+                  <Briefcase className="w-4 h-4 text-[#7551ff]" />
+                  Recent Job Applications
+                </CardTitle>
+                <CardDescription>
+                  Automated submissions and status tracking
+                </CardDescription>
+              </div>
+              <Badge variant="outline" className="text-[10px] bg-[#1b254b] text-[#a3aed0] border-[#1b254b]">
+                {applications?.length ?? 0} Applications Total
               </Badge>
             </CardHeader>
             <CardContent>
@@ -155,38 +166,45 @@ export default function Dashboard() {
                 <div className="space-y-3">
                   {[...Array(5)].map((_, i) => (
                     <div key={i} className="flex items-center gap-4">
-                      <Skeleton className="h-10 w-10 rounded-xl" />
+                      <Skeleton className="h-10 w-10 rounded-2xl bg-[#1b254b]" />
                       <div className="flex-1 space-y-1.5">
-                        <Skeleton className="h-3.5 w-[60%]" />
-                        <Skeleton className="h-3 w-[40%]" />
+                        <Skeleton className="h-3.5 w-[60%] bg-[#1b254b]" />
+                        <Skeleton className="h-3 w-[40%] bg-[#1b254b]" />
                       </div>
-                      <Skeleton className="h-5 w-16 rounded-full" />
+                      <Skeleton className="h-5 w-16 rounded-full bg-[#1b254b]" />
                     </div>
                   ))}
                 </div>
               ) : !applications?.length ? (
-                <div className="text-center py-12 text-slate-600">
-                  <Briefcase className="w-10 h-10 mx-auto mb-2 stroke-[1.5]" />
-                  <p className="text-sm">No applications yet</p>
-                  <p className="text-xs mt-1">Click "Test Run" in the top bar to trigger a test application</p>
+                <div className="text-center py-14 text-[#a3aed0]">
+                  <Briefcase className="w-12 h-12 mx-auto mb-3 opacity-40 stroke-[1.5]" />
+                  <p className="text-sm font-semibold text-white">No job applications recorded</p>
+                  <p className="text-xs text-[#a3aed0] mt-1">
+                    Click "Test Agent" in top bar to run an autonomous test pipeline cycle.
+                  </p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
                     <thead>
-                      <tr className="border-b border-white/[0.06] text-slate-500 font-semibold uppercase tracking-wider">
-                        <th className="pb-3 pr-4">Company</th>
+                      <tr className="border-b border-[#1b254b] text-[#a3aed0] font-bold uppercase tracking-wider text-[10px]">
+                        <th className="pb-3 pr-4 pl-2">Company</th>
                         <th className="pb-3 pr-4">Role</th>
                         <th className="pb-3 pr-4">Status</th>
-                        <th className="pb-3">Date</th>
+                        <th className="pb-3 text-right pr-2">Date Applied</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-white/[0.04]">
+                    <tbody className="divide-y divide-[#1b254b]/50">
                       {applications.slice(0, 8).map((app) => (
-                        <tr key={app.id} className="hover:bg-white/[0.02] transition-colors">
-                          <td className="py-3 pr-4 font-semibold text-white">{app.company}</td>
-                          <td className="py-3 pr-4 text-slate-400">{app.role}</td>
-                          <td className="py-3 pr-4">
+                        <tr key={app.id} className="hover:bg-[#1b254b]/40 transition-colors">
+                          <td className="py-3.5 pr-4 pl-2 font-bold text-white flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-lg bg-[#1b254b] text-[#7551ff] flex items-center justify-center font-bold text-xs">
+                              {app.company[0]}
+                            </div>
+                            {app.company}
+                          </td>
+                          <td className="py-3.5 pr-4 text-[#a3aed0] font-medium">{app.role}</td>
+                          <td className="py-3.5 pr-4">
                             <Badge
                               variant={
                                 app.status.toLowerCase().includes("applied")
@@ -195,11 +213,12 @@ export default function Dashboard() {
                                   ? "default"
                                   : "warning"
                               }
+                              className="text-[10px]"
                             >
                               {app.status}
                             </Badge>
                           </td>
-                          <td className="py-3 text-slate-500 font-mono text-[11px]">
+                          <td className="py-3.5 pr-2 text-right text-[#a3aed0] font-mono text-[11px]">
                             {formatDate(app.date_applied)}
                           </td>
                         </tr>
@@ -212,7 +231,7 @@ export default function Dashboard() {
           </Card>
         </motion.div>
 
-        {/* Live Agent Feed */}
+        {/* Live Agent Feed Widget */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -221,49 +240,53 @@ export default function Dashboard() {
         >
           <Card className="h-full">
             <CardHeader className="flex-row items-center justify-between space-y-0 pb-4">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-                </span>
-                <Terminal className="w-4 h-4 text-slate-500" />
-                Agent Feed
-              </CardTitle>
+              <div>
+                <CardTitle className="flex items-center gap-2 text-base text-white">
+                  <span className="relative flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#01b574] opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#01b574]" />
+                  </span>
+                  <Terminal className="w-4 h-4 text-[#7551ff]" />
+                  Agent Live Telemetry
+                </CardTitle>
+                <CardDescription>Real-time graph execution logs</CardDescription>
+              </div>
               <button
                 onClick={() => refetchLogs()}
-                className="text-slate-500 hover:text-white transition-colors cursor-pointer"
+                className="p-2 rounded-xl text-[#a3aed0] hover:text-white hover:bg-[#1b254b] transition-colors cursor-pointer"
               >
-                <RefreshCw className="w-3.5 h-3.5" />
+                <RefreshCw className="w-4 h-4" />
               </button>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
+              <div className="space-y-2.5 max-h-[420px] overflow-y-auto pr-1">
                 {logsLoading ? (
                   [...Array(6)].map((_, i) => (
-                    <div key={i} className="flex gap-3 p-3 rounded-xl bg-white/[0.02]">
-                      <Skeleton className="h-3 w-16" />
-                      <Skeleton className="h-3 flex-1" />
+                    <div key={i} className="flex gap-3 p-3 rounded-2xl bg-[#1b254b]">
+                      <Skeleton className="h-3 w-16 bg-[#0b1437]" />
+                      <Skeleton className="h-3 flex-1 bg-[#0b1437]" />
                     </div>
                   ))
                 ) : !logs?.length ? (
-                  <p className="text-center text-sm text-slate-600 py-8">No agent activity yet</p>
+                  <p className="text-center text-xs text-[#a3aed0] py-12">No agent telemetry logged yet</p>
                 ) : (
-                  logs.slice(0, 15).map((log, idx) => (
+                  logs.map((log, i) => (
                     <div
-                      key={idx}
-                      className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.04] text-xs font-mono"
+                      key={i}
+                      className="p-3 rounded-2xl bg-[#0b1437] border border-[#1b254b] text-xs font-mono transition-all hover:border-[#7551ff]/30"
                     >
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <span className={cn("font-bold", AGENT_COLORS[log.agent] || "text-slate-400")}>
-                            [{log.agent}]
-                          </span>
-                          <span className="ml-2 text-slate-300 font-sans">{log.message}</span>
-                        </div>
-                        <span className="text-[10px] text-slate-600 whitespace-nowrap">
-                          {formatTime(log.time)}
+                      <div className="flex items-center justify-between mb-1">
+                        <span
+                          className={cn(
+                            "font-bold text-[10px] uppercase tracking-wider",
+                            AGENT_COLORS[log.agent] || "text-[#7551ff]"
+                          )}
+                        >
+                          [{log.agent}]
                         </span>
+                        <span className="text-[10px] text-[#a3aed0]">{formatTime(log.time)}</span>
                       </div>
+                      <p className="text-[#a3aed0] leading-relaxed break-words">{log.message}</p>
                     </div>
                   ))
                 )}
