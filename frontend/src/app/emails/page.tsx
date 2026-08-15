@@ -98,16 +98,16 @@ export default function EmailsPage() {
   return (
     <div className="space-y-6">
       {/* Top Banner Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 sm:p-7 rounded-[24px] bg-slate-900/60 border border-slate-800/80 backdrop-blur-2xl shadow-2xl">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 sm:p-7 rounded-[24px] bg-white/90 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800/80 backdrop-blur-2xl shadow-lg dark:shadow-2xl">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-semibold mb-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-semibold mb-2">
             <Send className="w-3.5 h-3.5" />
             Autonomous Outreach Engine
           </div>
-          <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
+          <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
             Cold Outreach & Email Tracker
           </h2>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             Automated contact ingestion, position-tailored cold emails, and AI response classification
           </p>
         </div>
@@ -127,7 +127,7 @@ export default function EmailsPage() {
       </div>
 
       {uploadMessage && (
-        <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-xs flex items-center gap-2 animate-in fade-in">
+        <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-600 dark:text-emerald-400 text-xs flex items-center gap-2 animate-in fade-in">
           <FileSpreadsheet className="w-4 h-4 shrink-0" />
           <span>{uploadMessage}</span>
         </div>
@@ -139,7 +139,7 @@ export default function EmailsPage() {
           icon={Send}
           label="Outbound Sent & Drafts"
           value={outboundCount}
-          iconColor="text-cyan-400"
+          iconColor="text-cyan-600 dark:text-cyan-400"
           iconBg="bg-cyan-500/10 border-cyan-500/20"
           change="AI Drafted"
           delay={0}
@@ -148,7 +148,7 @@ export default function EmailsPage() {
           icon={Inbox}
           label="Inbound HR Replies"
           value={inboundCount}
-          iconColor="text-indigo-400"
+          iconColor="text-indigo-600 dark:text-indigo-400"
           iconBg="bg-indigo-500/10 border-indigo-500/20"
           change="Real-time"
           delay={0.08}
@@ -157,7 +157,7 @@ export default function EmailsPage() {
           icon={CheckCircle2}
           label="Interviews Scheduled"
           value={interviewCount}
-          iconColor="text-emerald-400"
+          iconColor="text-emerald-600 dark:text-emerald-400"
           iconBg="bg-emerald-500/10 border-emerald-500/20"
           change="High Intent"
           delay={0.16}
@@ -169,8 +169,8 @@ export default function EmailsPage() {
         <Card>
           <CardHeader className="flex-row items-center justify-between pb-3">
             <div>
-              <CardTitle className="text-base text-white flex items-center gap-2">
-                <UserCheck className="w-4 h-4 text-indigo-400" />
+              <CardTitle className="text-base text-slate-900 dark:text-white flex items-center gap-2">
+                <UserCheck className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                 Ingested Recruiter & HR Contacts ({hrContacts.length})
               </CardTitle>
               <CardDescription>Target position list & automated outreach campaign statuses</CardDescription>
@@ -180,7 +180,7 @@ export default function EmailsPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead>
-                  <tr className="border-b border-slate-800 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+                  <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider text-[10px]">
                     <th className="pb-3 pr-4 pl-1">Contact Name</th>
                     <th className="pb-3 pr-4">Email</th>
                     <th className="pb-3 pr-4">Company</th>
@@ -188,13 +188,13 @@ export default function EmailsPage() {
                     <th className="pb-3 text-right pr-1">Status</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/60">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                   {hrContacts.map((c) => (
-                    <tr key={c.id} className="hover:bg-slate-800/30 transition-colors">
-                      <td className="py-3.5 pr-4 pl-1 font-bold text-white">{c.contact_name}</td>
-                      <td className="py-3.5 pr-4 text-slate-400 font-mono">{c.email}</td>
-                      <td className="py-3.5 pr-4 text-slate-300">{c.company}</td>
-                      <td className="py-3.5 pr-4 text-indigo-400 font-medium">{c.position || "Hiring Manager"}</td>
+                    <tr key={c.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                      <td className="py-3.5 pr-4 pl-1 font-bold text-slate-900 dark:text-white">{c.contact_name}</td>
+                      <td className="py-3.5 pr-4 text-slate-500 dark:text-slate-400 font-mono">{c.email}</td>
+                      <td className="py-3.5 pr-4 text-slate-700 dark:text-slate-300">{c.company}</td>
+                      <td className="py-3.5 pr-4 text-indigo-600 dark:text-indigo-400 font-medium">{c.position || "Hiring Manager"}</td>
                       <td className="py-3.5 text-right pr-1">
                         <Badge variant="success" className="text-[10px]">
                           {c.status}
@@ -213,8 +213,8 @@ export default function EmailsPage() {
       <Card>
         <CardHeader className="flex-row items-center justify-between space-y-0 pb-4">
           <div>
-            <CardTitle className="text-base text-white flex items-center gap-2">
-              <Mail className="w-4 h-4 text-indigo-400" />
+            <CardTitle className="text-base text-slate-900 dark:text-white flex items-center gap-2">
+              <Mail className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
               Campaign Email Logs
             </CardTitle>
             <CardDescription>Position-tailored cold outreach history and sentiment tracking</CardDescription>
@@ -223,7 +223,7 @@ export default function EmailsPage() {
             <select
               value={filterDirection}
               onChange={(e) => setFilterDirection(e.target.value as any)}
-              className="bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500/50"
+              className="bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500/50"
             >
               <option value="all">All Directions</option>
               <option value="outbound">Outbound Only</option>
@@ -235,11 +235,11 @@ export default function EmailsPage() {
           {emailsLoading ? (
             <div className="space-y-3">
               {[...Array(4)].map((_, i) => (
-                <div key={i} className="flex items-center gap-4 p-3 rounded-xl bg-slate-950/40">
-                  <Skeleton className="h-9 w-9 rounded-full bg-slate-800" />
+                <div key={i} className="flex items-center gap-4 p-3 rounded-xl bg-slate-100 dark:bg-slate-950/40">
+                  <Skeleton className="h-9 w-9 rounded-full bg-slate-200 dark:bg-slate-800" />
                   <div className="flex-1 space-y-1.5">
-                    <Skeleton className="h-4 w-1/3 bg-slate-800" />
-                    <Skeleton className="h-3 w-1/2 bg-slate-800" />
+                    <Skeleton className="h-4 w-1/3 bg-slate-200 dark:bg-slate-800" />
+                    <Skeleton className="h-3 w-1/2 bg-slate-200 dark:bg-slate-800" />
                   </div>
                 </div>
               ))}
@@ -254,7 +254,7 @@ export default function EmailsPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead>
-                  <tr className="border-b border-slate-800 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+                  <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider text-[10px]">
                     <th className="pb-3 pr-4 pl-1">Recipient / Sender</th>
                     <th className="pb-3 pr-4">Company</th>
                     <th className="pb-3 pr-4">Subject</th>
@@ -263,32 +263,32 @@ export default function EmailsPage() {
                     <th className="pb-3 text-right pr-1">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/60">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                   {emails.map((email) => (
-                    <tr key={email.id} className="hover:bg-slate-800/30 transition-colors">
-                      <td className="py-3.5 pr-4 pl-1 font-bold text-white">
+                    <tr key={email.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                      <td className="py-3.5 pr-4 pl-1 font-bold text-slate-900 dark:text-white">
                         <div className="flex items-center gap-2">
                           <span
                             className={cn(
                               "w-2 h-2 rounded-full",
-                              email.direction === "outbound" ? "bg-cyan-400" : "bg-indigo-400"
+                              email.direction === "outbound" ? "bg-cyan-500 dark:bg-cyan-400" : "bg-indigo-500 dark:bg-indigo-400"
                             )}
                           />
                           {email.recipient_name || email.recipient_email || "HR Manager"}
                         </div>
                       </td>
-                      <td className="py-3.5 pr-4 text-slate-300">{email.company || "Company"}</td>
-                      <td className="py-3.5 pr-4 text-white font-medium max-w-xs truncate">{email.subject}</td>
+                      <td className="py-3.5 pr-4 text-slate-700 dark:text-slate-300">{email.company || "Company"}</td>
+                      <td className="py-3.5 pr-4 text-slate-900 dark:text-white font-medium max-w-xs truncate">{email.subject}</td>
                       <td className="py-3.5 pr-4">
                         <ClassificationBadge classification={email.classification} />
                       </td>
-                      <td className="py-3.5 pr-4 text-slate-400 font-mono text-[11px]">
+                      <td className="py-3.5 pr-4 text-slate-500 dark:text-slate-400 font-mono text-[11px]">
                         {formatDate(email.timestamp)}
                       </td>
                       <td className="py-3.5 text-right pr-1">
                         <button
                           onClick={() => setSelectedEmail(email)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+                          className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                           title="View Email Details"
                         >
                           <Eye className="w-4 h-4" />
@@ -305,29 +305,29 @@ export default function EmailsPage() {
 
       {/* View Email Dialog */}
       <Dialog open={!!selectedEmail} onOpenChange={() => setSelectedEmail(null)}>
-        <DialogContent className="max-w-2xl bg-slate-900 border border-slate-800 text-white rounded-[24px] p-6 sm:p-7">
+        <DialogContent className="max-w-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-[24px] p-6 sm:p-7 shadow-2xl">
           <DialogHeader>
-            <DialogTitle className="text-base font-bold text-white flex items-center justify-between">
+            <DialogTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center justify-between">
               <span className="truncate">{selectedEmail?.subject}</span>
             </DialogTitle>
           </DialogHeader>
 
           {selectedEmail && (
             <div className="space-y-4 pt-2">
-              <div className="grid grid-cols-2 gap-4 p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 text-xs">
+              <div className="grid grid-cols-2 gap-4 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 text-xs">
                 <div>
-                  <span className="text-slate-400 block mb-0.5">Target Contact:</span>
-                  <span className="font-bold text-white">
+                  <span className="text-slate-500 dark:text-slate-400 block mb-0.5">Target Contact:</span>
+                  <span className="font-bold text-slate-900 dark:text-white">
                     {selectedEmail.recipient_name || selectedEmail.recipient_email}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block mb-0.5">Company:</span>
-                  <span className="font-bold text-white">{selectedEmail.company || "N/A"}</span>
+                  <span className="text-slate-500 dark:text-slate-400 block mb-0.5">Company:</span>
+                  <span className="font-bold text-slate-900 dark:text-white">{selectedEmail.company || "N/A"}</span>
                 </div>
               </div>
 
-              <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 font-mono text-xs leading-relaxed max-h-80 overflow-y-auto whitespace-pre-wrap text-slate-300">
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 font-mono text-xs leading-relaxed max-h-80 overflow-y-auto whitespace-pre-wrap text-slate-700 dark:text-slate-300">
                 {selectedEmail.body}
               </div>
             </div>

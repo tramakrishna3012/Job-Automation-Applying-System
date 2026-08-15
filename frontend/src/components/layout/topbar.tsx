@@ -75,25 +75,25 @@ export function Topbar() {
     <header className="sticky top-4 z-30 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 px-1">
       {/* Stellar Breadcrumbs & Title */}
       <div>
-        <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-0.5">
+        <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400 mb-0.5">
           <span>Platform</span>
-          <span className="text-slate-600">/</span>
-          <span className="text-indigo-400 capitalize">{currentPage}</span>
+          <span className="text-slate-400 dark:text-slate-600">/</span>
+          <span className="text-indigo-600 dark:text-indigo-400 capitalize">{currentPage}</span>
         </div>
-        <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight capitalize">
+        <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight capitalize">
           {currentPage}
         </h1>
       </div>
 
       {/* Stellar Floating Glass Control Capsule */}
-      <div className="relative flex items-center gap-2.5 p-2 rounded-full bg-slate-900/80 border border-slate-800/80 backdrop-blur-2xl shadow-2xl">
+      <div className="relative flex items-center gap-2.5 p-2 rounded-full bg-white/90 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800/80 backdrop-blur-2xl shadow-lg dark:shadow-2xl">
         {/* Search Capsule */}
-        <div className="relative flex items-center bg-slate-950/80 rounded-full border border-slate-800 px-3.5 py-1.5 text-xs text-slate-300 w-36 sm:w-52 focus-within:border-indigo-500/50 transition-all">
-          <Search className="w-3.5 h-3.5 text-slate-500 mr-2 shrink-0" />
+        <div className="relative flex items-center bg-slate-100 dark:bg-slate-950/80 rounded-full border border-slate-200 dark:border-slate-800 px-3.5 py-1.5 text-xs text-slate-700 dark:text-slate-300 w-36 sm:w-52 focus-within:border-indigo-500/50 transition-all">
+          <Search className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 mr-2 shrink-0" />
           <input
             type="text"
             placeholder="Search jobs..."
-            className="bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none w-full"
+            className="bg-transparent text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none w-full"
           />
         </div>
 
@@ -123,14 +123,14 @@ export function Topbar() {
           <button
             onClick={handleToggleBell}
             className={cn(
-              "relative p-2 rounded-full text-slate-400 hover:text-white hover:bg-slate-800/60 transition-all cursor-pointer",
-              bellOpen && "bg-slate-800 text-white"
+              "relative p-2 rounded-full text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-all cursor-pointer",
+              bellOpen && "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white"
             )}
             title="Notifications & Agent Activity"
           >
             <Bell className="w-4 h-4" />
             {hasUnread && (
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-slate-900" />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-emerald-500 dark:bg-emerald-400 ring-2 ring-white dark:ring-slate-900" />
             )}
           </button>
 
@@ -142,16 +142,16 @@ export function Topbar() {
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 10 }}
                 transition={{ duration: 0.2 }}
-                className="absolute right-0 top-12 z-50 w-80 sm:w-96 rounded-[22px] bg-slate-900/95 border border-slate-800 backdrop-blur-2xl shadow-2xl p-4 space-y-3"
+                className="absolute right-0 top-12 z-50 w-80 sm:w-96 rounded-[22px] bg-white/95 dark:bg-slate-900/95 border border-slate-200 dark:border-slate-800 backdrop-blur-2xl shadow-2xl p-4 space-y-3"
               >
-                <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+                <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2.5">
                   <div className="flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-indigo-400" />
-                    <span className="text-xs font-bold text-white">Live Agent Activity</span>
+                    <Sparkles className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
+                    <span className="text-xs font-bold text-slate-900 dark:text-white">Live Agent Activity</span>
                   </div>
                   <button
                     onClick={() => setHasUnread(false)}
-                    className="text-[10px] text-slate-400 hover:text-white flex items-center gap-1 cursor-pointer"
+                    className="text-[10px] text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white flex items-center gap-1 cursor-pointer"
                   >
                     <CheckCheck className="w-3 h-3" /> Mark read
                   </button>
@@ -162,19 +162,19 @@ export function Topbar() {
                     logs.slice(0, 8).map((log: AgentLog, i: number) => (
                       <div
                         key={i}
-                        className="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800/80 text-xs hover:border-indigo-500/30 transition-all"
+                        className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950/80 border border-slate-200/80 dark:border-slate-800/80 text-xs hover:border-indigo-500/30 transition-all"
                       >
                         <div className="flex items-center justify-between mb-1">
-                          <span className="font-bold text-[11px] text-cyan-400">{log.agent} Agent</span>
-                          <span className="text-[9px] text-slate-500 font-mono">
+                          <span className="font-bold text-[11px] text-cyan-600 dark:text-cyan-400">{log.agent} Agent</span>
+                          <span className="text-[9px] text-slate-400 dark:text-slate-500 font-mono">
                             {new Date(log.time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                           </span>
                         </div>
-                        <p className="text-[11px] text-slate-400 leading-snug line-clamp-2">{log.message}</p>
+                        <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-snug line-clamp-2">{log.message}</p>
                       </div>
                     ))
                   ) : (
-                    <div className="text-center py-8 text-xs text-slate-500">
+                    <div className="text-center py-8 text-xs text-slate-400 dark:text-slate-500">
                       <Terminal className="w-6 h-6 mx-auto mb-2 opacity-40" />
                       No recent agent events recorded
                     </div>
@@ -188,13 +188,13 @@ export function Topbar() {
         {/* Theme Mode Toggle */}
         <button
           onClick={toggleTheme}
-          className="p-2 rounded-full text-slate-400 hover:text-white hover:bg-slate-800/60 transition-all cursor-pointer"
+          className="p-2 rounded-full text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-all cursor-pointer"
           title={`Switch to ${theme === "dark" ? "Light" : "Dark"} Mode`}
         >
           {theme === "dark" ? (
             <Sun className="w-4 h-4 text-amber-400" />
           ) : (
-            <Moon className="w-4 h-4 text-indigo-400" />
+            <Moon className="w-4 h-4 text-indigo-600" />
           )}
         </button>
 
@@ -206,7 +206,7 @@ export function Topbar() {
 
       {/* Test Run Notification Banner */}
       {notification && (
-        <div className="w-full p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-xs flex items-center gap-2 animate-in fade-in slide-in-from-top-2 shadow-lg shadow-emerald-500/5">
+        <div className="w-full p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-600 dark:text-emerald-400 text-xs flex items-center gap-2 animate-in fade-in slide-in-from-top-2 shadow-lg shadow-emerald-500/5">
           <Info className="w-4 h-4 shrink-0" />
           <span>{notification}</span>
         </div>

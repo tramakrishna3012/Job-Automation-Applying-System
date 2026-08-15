@@ -6,7 +6,7 @@ const Card = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
     <div
       ref={ref}
       className={cn(
-        "rounded-[20px] border border-slate-800/80 bg-slate-900/60 backdrop-blur-xl shadow-xl transition-all duration-250 hover:border-indigo-500/30 hover:shadow-indigo-500/5",
+        "rounded-[20px] border border-slate-200/80 dark:border-slate-800/80 bg-white/90 dark:bg-slate-900/60 backdrop-blur-xl shadow-xl dark:shadow-2xl transition-all duration-250 hover:border-indigo-500/40 hover:shadow-indigo-500/10",
         className
       )}
       {...props}
@@ -24,14 +24,14 @@ CardHeader.displayName = "CardHeader";
 
 const CardTitle = forwardRef<HTMLHeadingElement, React.HTMLAttributes<HTMLHeadingElement>>(
   ({ className, ...props }, ref) => (
-    <h3 ref={ref} className={cn("text-base sm:text-lg font-bold text-white tracking-tight flex items-center gap-2", className)} {...props} />
+    <h3 ref={ref} className={cn("text-base sm:text-lg font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2", className)} {...props} />
   )
 );
 CardTitle.displayName = "CardTitle";
 
 const CardDescription = forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLParagraphElement>>(
   ({ className, ...props }, ref) => (
-    <p ref={ref} className={cn("text-xs text-slate-400 leading-relaxed", className)} {...props} />
+    <p ref={ref} className={cn("text-xs text-slate-500 dark:text-slate-400 leading-relaxed", className)} {...props} />
   )
 );
 CardDescription.displayName = "CardDescription";
@@ -45,7 +45,7 @@ CardContent.displayName = "CardContent";
 
 const CardFooter = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn("flex items-center p-5 sm:p-6 pt-0 border-t border-slate-800/60 mt-4", className)} {...props} />
+    <div ref={ref} className={cn("flex items-center p-5 sm:p-6 pt-0 border-t border-slate-200/80 dark:border-slate-800/60 mt-4", className)} {...props} />
   )
 );
 CardFooter.displayName = "CardFooter";

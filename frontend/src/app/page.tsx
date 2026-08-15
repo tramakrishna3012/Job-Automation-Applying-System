@@ -38,7 +38,7 @@ function MatchScoreRing({ score }: { score: number }) {
   return (
     <div className="relative w-9 h-9 flex items-center justify-center">
       <svg className="w-9 h-9 -rotate-90" viewBox="0 0 36 36">
-        <circle cx="18" cy="18" r={radius} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="2.5" />
+        <circle cx="18" cy="18" r={radius} fill="none" stroke="currentColor" className="text-slate-200 dark:text-slate-800" strokeWidth="2.5" />
         <circle
           cx="18"
           cy="18"
@@ -52,7 +52,7 @@ function MatchScoreRing({ score }: { score: number }) {
           className="transition-all duration-700"
         />
       </svg>
-      <span className="absolute text-[10px] font-bold text-white">{score}%</span>
+      <span className="absolute text-[10px] font-bold text-slate-900 dark:text-white">{score}%</span>
     </div>
   );
 }
@@ -89,19 +89,19 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       {/* Top Welcome Hero Banner */}
-      <div className="p-6 sm:p-8 rounded-[24px] bg-slate-900/60 border border-slate-800/80 backdrop-blur-2xl relative overflow-hidden shadow-2xl">
+      <div className="p-6 sm:p-8 rounded-[24px] bg-white/90 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800/80 backdrop-blur-2xl relative overflow-hidden shadow-lg dark:shadow-2xl">
         <div className="absolute top-0 right-0 w-[400px] h-full bg-gradient-to-l from-indigo-500/[0.08] via-purple-500/[0.04] to-transparent pointer-events-none" />
         
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-semibold mb-2.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-semibold mb-2.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-ping" />
               Autonomous Agent Zero Active
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
               Welcome back, {user?.name || "Candidate"}
             </h1>
-            <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-2xl leading-relaxed">
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-1 max-w-2xl leading-relaxed">
               Your autonomous AI agents are scouting job boards, matching semantic embeddings, and generating tailored executive resumes via Requesty AI Gateway.
             </p>
           </div>
@@ -109,9 +109,9 @@ export default function DashboardPage() {
           <div className="flex flex-wrap items-center gap-2.5 shrink-0">
             <Link
               href="/resume-studio"
-              className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-slate-800/80 hover:bg-slate-700 text-white text-xs font-semibold border border-slate-700/60 shadow-md transition-all cursor-pointer"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/80 dark:hover:bg-slate-700 text-slate-900 dark:text-white text-xs font-semibold border border-slate-200 dark:border-slate-700/60 shadow-sm transition-all cursor-pointer"
             >
-              <FileText className="w-4 h-4 text-cyan-400" />
+              <FileText className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
               Resume Studio
             </Link>
             <Link
@@ -131,7 +131,7 @@ export default function DashboardPage() {
           icon={Briefcase}
           label="Jobs Discovered"
           value={stats?.discovered ?? 0}
-          iconColor="text-cyan-400"
+          iconColor="text-cyan-600 dark:text-cyan-400"
           iconBg="bg-cyan-500/10 border-cyan-500/20"
           change="+12 today"
           changeType="positive"
@@ -142,7 +142,7 @@ export default function DashboardPage() {
           icon={CheckCircle2}
           label="Applications Submitted"
           value={stats?.applied ?? 0}
-          iconColor="text-emerald-400"
+          iconColor="text-emerald-600 dark:text-emerald-400"
           iconBg="bg-emerald-500/10 border-emerald-500/20"
           change="Automated"
           changeType="positive"
@@ -153,7 +153,7 @@ export default function DashboardPage() {
           icon={BrainCircuit}
           label="Interviews Tracked"
           value={stats?.interviews ?? 0}
-          iconColor="text-purple-400"
+          iconColor="text-purple-600 dark:text-purple-400"
           iconBg="bg-purple-500/10 border-purple-500/20"
           change="AI Classify"
           changeType="neutral"
@@ -165,7 +165,7 @@ export default function DashboardPage() {
           label="Avg AI Match Score"
           value={avgMatchScore}
           suffix="%"
-          iconColor="text-amber-400"
+          iconColor="text-amber-600 dark:text-amber-400"
           iconBg="bg-amber-500/10 border-amber-500/20"
           change="pgvector"
           changeType="positive"
@@ -181,8 +181,8 @@ export default function DashboardPage() {
           <Card>
             <CardHeader className="flex-row items-center justify-between space-y-0 pb-4">
               <div>
-                <CardTitle className="text-base font-bold text-white flex items-center gap-2">
-                  <Briefcase className="w-4 h-4 text-indigo-400" />
+                <CardTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Briefcase className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                   Recent Job Applications
                 </CardTitle>
                 <CardDescription>
@@ -191,7 +191,7 @@ export default function DashboardPage() {
               </div>
               <Link
                 href="/pipeline"
-                className="text-xs text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-1 transition-colors"
+                className="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 font-semibold flex items-center gap-1 transition-colors"
               >
                 Kanban View <ChevronRight className="w-3.5 h-3.5" />
               </Link>
@@ -200,11 +200,11 @@ export default function DashboardPage() {
               {appsLoading ? (
                 <div className="space-y-3">
                   {[...Array(4)].map((_, i) => (
-                    <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-slate-950/40">
-                      <Skeleton className="w-9 h-9 rounded-xl bg-slate-800" />
+                    <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-slate-100 dark:bg-slate-950/40">
+                      <Skeleton className="w-9 h-9 rounded-xl bg-slate-200 dark:bg-slate-800" />
                       <div className="flex-1 space-y-1.5">
-                        <Skeleton className="h-4 w-1/3 bg-slate-800" />
-                        <Skeleton className="h-3 w-1/2 bg-slate-800" />
+                        <Skeleton className="h-4 w-1/3 bg-slate-200 dark:bg-slate-800" />
+                        <Skeleton className="h-3 w-1/2 bg-slate-200 dark:bg-slate-800" />
                       </div>
                     </div>
                   ))}
@@ -219,7 +219,7 @@ export default function DashboardPage() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
                     <thead>
-                      <tr className="border-b border-slate-800 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+                      <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider text-[10px]">
                         <th className="pb-3 pr-4 pl-1">Company</th>
                         <th className="pb-3 pr-4">Position</th>
                         <th className="pb-3 pr-4">Match</th>
@@ -227,20 +227,20 @@ export default function DashboardPage() {
                         <th className="pb-3 text-right pr-1">Date</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-800/60">
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                       {applications.slice(0, 7).map((app) => {
                         const score = app.match_score ?? Math.floor(Math.random() * 25) + 72;
                         return (
-                          <tr key={app.id} className="hover:bg-slate-800/30 transition-colors group">
-                            <td className="py-3.5 pr-4 pl-1 font-bold text-white">
+                          <tr key={app.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors group">
+                            <td className="py-3.5 pr-4 pl-1 font-bold text-slate-900 dark:text-white">
                               <div className="flex items-center gap-2.5">
-                                <div className="w-8 h-8 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
+                                <div className="w-8 h-8 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-300 flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
                                   {app.company.charAt(0)}
                                 </div>
                                 <span className="truncate max-w-[140px]">{app.company}</span>
                               </div>
                             </td>
-                            <td className="py-3.5 pr-4 text-slate-300 font-medium truncate max-w-[160px]">
+                            <td className="py-3.5 pr-4 text-slate-700 dark:text-slate-300 font-medium truncate max-w-[160px]">
                               {app.role}
                             </td>
                             <td className="py-3.5 pr-4">
@@ -259,7 +259,7 @@ export default function DashboardPage() {
                                 {app.status}
                               </Badge>
                             </td>
-                            <td className="py-3.5 text-right pr-1 text-slate-400 font-mono text-[11px]">
+                            <td className="py-3.5 text-right pr-1 text-slate-500 dark:text-slate-400 font-mono text-[11px]">
                               {formatDate(app.date_applied)}
                             </td>
                           </tr>
@@ -278,15 +278,15 @@ export default function DashboardPage() {
           <Card className="h-full flex flex-col">
             <CardHeader className="flex-row items-center justify-between space-y-0 pb-3">
               <div>
-                <CardTitle className="text-base font-bold text-white flex items-center gap-2">
-                  <Terminal className="w-4 h-4 text-cyan-400" />
+                <CardTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Terminal className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
                   Live Agent Telemetry
                 </CardTitle>
                 <CardDescription>Real-time autonomous micro-agent execution</CardDescription>
               </div>
               <button
                 onClick={() => refetchLogs()}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/80 transition-colors cursor-pointer"
+                className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-colors cursor-pointer"
                 title="Refresh logs"
               >
                 <RotateCw className={cn("w-3.5 h-3.5", logsLoading && "animate-spin")} />
@@ -297,11 +297,11 @@ export default function DashboardPage() {
                 {logsLoading ? (
                   <div className="space-y-2">
                     {[...Array(5)].map((_, i) => (
-                      <Skeleton key={i} className="h-16 w-full rounded-xl bg-slate-800/60" />
+                      <Skeleton key={i} className="h-16 w-full rounded-xl bg-slate-200 dark:bg-slate-800/60" />
                     ))}
                   </div>
                 ) : !logs?.length ? (
-                  <div className="text-center py-16 text-slate-500 text-xs">
+                  <div className="text-center py-16 text-slate-400 dark:text-slate-500 text-xs">
                     <Terminal className="w-8 h-8 mx-auto mb-2 opacity-30" />
                     No telemetry events logged yet
                   </div>
@@ -314,14 +314,14 @@ export default function DashboardPage() {
                     const isTracker = log.agent === "Tracker";
 
                     const badgeColor = isScout
-                      ? "text-cyan-400 border-cyan-500/30 bg-cyan-500/10"
+                      ? "text-cyan-600 dark:text-cyan-400 border-cyan-500/30 bg-cyan-500/10"
                       : isEditor
-                      ? "text-purple-400 border-purple-500/30 bg-purple-500/10"
+                      ? "text-purple-600 dark:text-purple-400 border-purple-500/30 bg-purple-500/10"
                       : isDispatcher
-                      ? "text-emerald-400 border-emerald-500/30 bg-emerald-500/10"
+                      ? "text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/10"
                       : isTracker
-                      ? "text-amber-400 border-amber-500/30 bg-amber-500/10"
-                      : "text-indigo-400 border-indigo-500/30 bg-indigo-500/10";
+                      ? "text-amber-600 dark:text-amber-400 border-amber-500/30 bg-amber-500/10"
+                      : "text-indigo-600 dark:text-indigo-400 border-indigo-500/30 bg-indigo-500/10";
 
                     return (
                       <motion.div
@@ -329,17 +329,17 @@ export default function DashboardPage() {
                         initial={{ opacity: 0, x: 10 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ duration: 0.25, delay: idx * 0.03 }}
-                        className="p-3 rounded-xl bg-slate-950/80 border border-slate-800/80 hover:border-slate-700/80 transition-all text-xs"
+                        className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950/80 border border-slate-200/80 dark:border-slate-800/80 hover:border-slate-300 dark:hover:border-slate-700/80 transition-all text-xs"
                       >
                         <div className="flex items-center justify-between mb-1">
                           <span className={cn("px-2 py-0.5 rounded-full text-[10px] font-bold border", badgeColor)}>
                             {log.agent}
                           </span>
-                          <span className="text-[10px] text-slate-500 font-mono">
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">
                             {formatTime(log.time)}
                           </span>
                         </div>
-                        <p className="text-[11px] text-slate-300 leading-relaxed mt-1">
+                        <p className="text-[11px] text-slate-700 dark:text-slate-300 leading-relaxed mt-1">
                           {log.message}
                         </p>
                       </motion.div>
@@ -349,9 +349,9 @@ export default function DashboardPage() {
               </div>
 
               {/* Terminal Gateway Footer */}
-              <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400 font-mono">
-                <span className="flex items-center gap-1.5 text-emerald-400">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <div className="mt-4 pt-3 border-t border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 font-mono">
+                <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-semibold">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse" />
                   Gateway Stream Connected
                 </span>
                 <span>v2.6 &bull; Neon DB</span>

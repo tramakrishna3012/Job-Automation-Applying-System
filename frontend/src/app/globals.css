@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
-/* ── Stellar Design System Tokens ───────────────────────── */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ── Stellar Dual-Theme Design System ───────────────────── */
 :root, html.dark {
   --background: #080c14;      /* Stellar Deep Void */
   --foreground: #f8fafc;      /* Slate 50 */
@@ -27,14 +29,14 @@ html.light {
   --background: #f8fafc;      /* Slate 50 */
   --foreground: #0f172a;      /* Slate 900 */
   --card: #ffffff;            /* Pure White */
-  --card-surface: rgba(255, 255, 255, 0.9);
+  --card-surface: rgba(255, 255, 255, 0.95);
   --card-border: #e2e8f0;     /* Slate 200 */
   --card-hover-border: rgba(99, 102, 241, 0.4);
   --muted: #f1f5f9;
   --text-primary: #0f172a;
-  --text-secondary: #64748b;  /* Slate 500 */
-  --text-muted: #94a3b8;      /* Slate 400 */
-  --input-bg: #f8fafc;
+  --text-secondary: #475569;  /* Slate 600 */
+  --text-muted: #64748b;      /* Slate 500 */
+  --input-bg: #ffffff;
   --brand-primary: #4f46e5;
   --brand-violet: #7c3aed;
   --brand-purple: #9333ea;
@@ -83,15 +85,23 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
-  transition: background-color 0.25s ease, color 0.25s ease;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 /* ── Stellar Cosmic Grid Background ─────────────────────── */
-.stellar-grid-bg {
+html.dark .stellar-grid-bg {
   background-image: 
     radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.12) 0%, transparent 60%),
     linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 100% 100%, 32px 32px, 32px 32px;
+}
+
+html.light .stellar-grid-bg {
+  background-image: 
+    radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.06) 0%, transparent 60%),
+    linear-gradient(to right, rgba(0, 0, 0, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
   background-size: 100% 100%, 32px 32px, 32px 32px;
 }
 
@@ -107,10 +117,14 @@ body {
   border: 1px solid var(--card-border);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border-radius: 18px;
-  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5);
+  border-radius: 20px;
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.05);
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
+}
+
+html.dark .stellar-card {
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5);
 }
 
 .stellar-card::before {
@@ -124,6 +138,10 @@ body {
   -webkit-mask-composite: xor;
   mask-composite: exclude;
   pointer-events: none;
+}
+
+html.light .stellar-card::before {
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.03), transparent 60%);
 }
 
 .stellar-card:hover {
@@ -179,14 +197,6 @@ body {
 
 .glow-purple {
   box-shadow: 0 0 24px -4px rgba(168, 85, 247, 0.35);
-}
-
-/* ── Match Ring ─────────────────────────────────────────── */
-.match-ring {
-  background: conic-gradient(
-    #6366f1 calc(var(--score, 0) * 1%),
-    rgba(255, 255, 255, 0.08) 0%
-  );
 }
 
 /* ── Pulse Radar Animation ──────────────────────────────── */

@@ -32,7 +32,7 @@ const PIPELINE_STAGES = [
     label: "Discovered",
     subtitle: "Scouted Jobs",
     icon: Inbox,
-    color: "text-cyan-400",
+    color: "text-cyan-600 dark:text-cyan-400",
     badgeVariant: "cyan" as const,
     glowBg: "bg-cyan-500/10 border-cyan-500/20",
   },
@@ -41,7 +41,7 @@ const PIPELINE_STAGES = [
     label: "Evaluating",
     subtitle: "pgvector Match",
     icon: FileSearch,
-    color: "text-amber-400",
+    color: "text-amber-600 dark:text-amber-400",
     badgeVariant: "warning" as const,
     glowBg: "bg-amber-500/10 border-amber-500/20",
   },
@@ -50,7 +50,7 @@ const PIPELINE_STAGES = [
     label: "Resume Ready",
     subtitle: "Tailored Version",
     icon: FileCog,
-    color: "text-indigo-400",
+    color: "text-indigo-600 dark:text-indigo-400",
     badgeVariant: "default" as const,
     glowBg: "bg-indigo-500/10 border-indigo-500/20",
   },
@@ -59,7 +59,7 @@ const PIPELINE_STAGES = [
     label: "Applied",
     subtitle: "Auto-Submitted",
     icon: CheckCircle2,
-    color: "text-emerald-400",
+    color: "text-emerald-600 dark:text-emerald-400",
     badgeVariant: "success" as const,
     glowBg: "bg-emerald-500/10 border-emerald-500/20",
   },
@@ -68,7 +68,7 @@ const PIPELINE_STAGES = [
     label: "Interview",
     subtitle: "HR Responses",
     icon: Calendar,
-    color: "text-purple-400",
+    color: "text-purple-600 dark:text-purple-400",
     badgeVariant: "purple" as const,
     glowBg: "bg-purple-500/10 border-purple-500/20",
   },
@@ -77,9 +77,9 @@ const PIPELINE_STAGES = [
     label: "Archived",
     subtitle: "Closed / Pass",
     icon: XCircle,
-    color: "text-slate-400",
+    color: "text-slate-500 dark:text-slate-400",
     badgeVariant: "outline" as const,
-    glowBg: "bg-slate-800/40 border-slate-700/40",
+    glowBg: "bg-slate-100 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700/40",
   },
 ];
 
@@ -91,7 +91,7 @@ function MatchScoreRing({ score }: { score: number }) {
   return (
     <div className="relative w-8 h-8 flex items-center justify-center shrink-0">
       <svg className="w-8 h-8 -rotate-90" viewBox="0 0 36 36">
-        <circle cx="18" cy="18" r={radius} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="2.5" />
+        <circle cx="18" cy="18" r={radius} fill="none" stroke="currentColor" className="text-slate-200 dark:text-slate-800" strokeWidth="2.5" />
         <circle
           cx="18"
           cy="18"
@@ -105,7 +105,7 @@ function MatchScoreRing({ score }: { score: number }) {
           className="transition-all duration-700"
         />
       </svg>
-      <span className="absolute text-[9px] font-bold text-white">{score}%</span>
+      <span className="absolute text-[9px] font-bold text-slate-900 dark:text-white">{score}%</span>
     </div>
   );
 }
@@ -149,21 +149,21 @@ function KanbanJobCard({ app }: { app: Application }) {
       initial={{ opacity: 0, scale: 0.96 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.96 }}
-      className="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800/80 hover:border-indigo-500/40 transition-all shadow-md hover:-translate-y-0.5 group relative"
+      className="p-3.5 rounded-xl bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800/80 hover:border-indigo-500/40 transition-all shadow-sm dark:shadow-md hover:-translate-y-0.5 group relative"
     >
       <div className="flex items-start gap-2.5">
-        <div className="w-8 h-8 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 flex items-center justify-center shrink-0 text-xs font-bold shadow-sm">
+        <div className="w-8 h-8 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-300 flex items-center justify-center shrink-0 text-xs font-bold shadow-sm">
           {app.company.charAt(0)}
         </div>
         <div className="flex-1 min-w-0">
-          <h4 className="text-xs font-bold text-white truncate leading-snug">{app.role}</h4>
-          <p className="text-[11px] text-slate-400 truncate mt-0.5">{app.company}</p>
+          <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate leading-snug">{app.role}</h4>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">{app.company}</p>
         </div>
         <MatchScoreRing score={score} />
       </div>
 
-      <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-slate-800/60 text-[10px]">
-        <span className="text-slate-500 font-mono">{formatDate(app.date_applied)}</span>
+      <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/60 text-[10px]">
+        <span className="text-slate-500 dark:text-slate-400 font-mono">{formatDate(app.date_applied)}</span>
         <Badge variant="outline" className="text-[9px] py-0 px-2">
           {app.status}
         </Badge>
@@ -193,38 +193,38 @@ export default function PipelinePage() {
   return (
     <div className="space-y-6">
       {/* Top Controls Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 sm:p-6 rounded-[22px] bg-slate-900/60 border border-slate-800/80 backdrop-blur-2xl shadow-xl">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 sm:p-6 rounded-[22px] bg-white/90 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800/80 backdrop-blur-2xl shadow-lg dark:shadow-xl">
         <div>
-          <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight">
+          <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white tracking-tight">
             Job Pipeline Kanban
           </h2>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
             Autonomous multi-stage job application lifecycle tracking
           </p>
         </div>
 
         <div className="flex items-center gap-3">
           {/* Search Input */}
-          <div className="relative flex items-center bg-slate-950/80 rounded-full border border-slate-800 px-3 py-1.5 text-xs text-slate-300 w-44 sm:w-60 focus-within:border-indigo-500/50 transition-all">
-            <Search className="w-3.5 h-3.5 text-slate-500 mr-2 shrink-0" />
+          <div className="relative flex items-center bg-slate-100 dark:bg-slate-950/80 rounded-full border border-slate-200 dark:border-slate-800 px-3 py-1.5 text-xs text-slate-700 dark:text-slate-300 w-44 sm:w-60 focus-within:border-indigo-500/50 transition-all">
+            <Search className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 mr-2 shrink-0" />
             <input
               type="text"
               placeholder="Filter company / position..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none w-full"
+              className="bg-transparent text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none w-full"
             />
           </div>
 
           {/* View Toggle */}
-          <div className="flex items-center bg-slate-950/80 rounded-xl border border-slate-800 p-1">
+          <div className="flex items-center bg-slate-100 dark:bg-slate-950/80 rounded-xl border border-slate-200 dark:border-slate-800 p-1">
             <button
               onClick={() => setViewMode("kanban")}
               className={cn(
                 "p-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer",
                 viewMode === "kanban"
                   ? "bg-indigo-600 text-white shadow-md"
-                  : "text-slate-400 hover:text-white"
+                  : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
               )}
               title="Kanban Board View"
             >
@@ -236,7 +236,7 @@ export default function PipelinePage() {
                 "p-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer",
                 viewMode === "table"
                   ? "bg-indigo-600 text-white shadow-md"
-                  : "text-slate-400 hover:text-white"
+                  : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
               )}
               title="Data Table View"
             >
@@ -258,15 +258,15 @@ export default function PipelinePage() {
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.25, delay: idx * 0.04 }}
-                className="flex flex-col rounded-[20px] bg-slate-900/40 border border-slate-800/80 backdrop-blur-xl p-3 min-h-[500px]"
+                className="flex flex-col rounded-[20px] bg-slate-100/70 dark:bg-slate-900/40 border border-slate-200/80 dark:border-slate-800/80 backdrop-blur-xl p-3 min-h-[500px]"
               >
                 {/* Column Header */}
-                <div className="flex items-center justify-between pb-3 px-1 mb-2 border-b border-slate-800/80">
+                <div className="flex items-center justify-between pb-3 px-1 mb-2 border-b border-slate-200 dark:border-slate-800/80">
                   <div className="flex items-center gap-2">
                     <stage.icon className={cn("w-4 h-4", stage.color)} />
                     <div>
-                      <span className="text-xs font-bold text-white block">{stage.label}</span>
-                      <span className="text-[9px] text-slate-500 font-mono">{stage.subtitle}</span>
+                      <span className="text-xs font-bold text-slate-900 dark:text-white block">{stage.label}</span>
+                      <span className="text-[9px] text-slate-500 dark:text-slate-400 font-mono">{stage.subtitle}</span>
                     </div>
                   </div>
                   <Badge variant={stage.badgeVariant} className="text-[10px] px-2 py-0">
@@ -278,13 +278,13 @@ export default function PipelinePage() {
                 <div className="flex-1 space-y-2.5 overflow-y-auto pr-0.5">
                   {isLoading ? (
                     [...Array(2)].map((_, i) => (
-                      <div key={i} className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800">
-                        <Skeleton className="h-4 w-3/4 mb-2 bg-slate-800" />
-                        <Skeleton className="h-3 w-1/2 bg-slate-800" />
+                      <div key={i} className="p-3.5 rounded-xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+                        <Skeleton className="h-4 w-3/4 mb-2 bg-slate-200 dark:bg-slate-800" />
+                        <Skeleton className="h-3 w-1/2 bg-slate-200 dark:bg-slate-800" />
                       </div>
                     ))
                   ) : !stageApps.length ? (
-                    <div className="text-center py-12 text-slate-500 text-xs font-medium">
+                    <div className="text-center py-12 text-slate-400 dark:text-slate-500 text-xs font-medium">
                       No jobs in stage
                     </div>
                   ) : (
@@ -304,7 +304,7 @@ export default function PipelinePage() {
             {isLoading ? (
               <div className="space-y-3">
                 {[...Array(5)].map((_, i) => (
-                  <Skeleton key={i} className="h-12 w-full bg-slate-800" />
+                  <Skeleton key={i} className="h-12 w-full bg-slate-200 dark:bg-slate-800" />
                 ))}
               </div>
             ) : !filteredApps?.length ? (
@@ -317,7 +317,7 @@ export default function PipelinePage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead>
-                    <tr className="border-b border-slate-800 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+                    <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider text-[10px]">
                       <th className="pb-3 pr-4 pl-1">Company</th>
                       <th className="pb-3 pr-4">Position</th>
                       <th className="pb-3 pr-4">Match Score</th>
@@ -325,20 +325,20 @@ export default function PipelinePage() {
                       <th className="pb-3 text-right pr-1">Date Ingested</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800/60">
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                     {filteredApps.map((app) => {
                       const score = app.match_score ?? Math.floor(Math.random() * 25) + 72;
                       return (
-                        <tr key={app.id} className="hover:bg-slate-800/30 transition-colors">
-                          <td className="py-3.5 pr-4 pl-1 font-bold text-white">
+                        <tr key={app.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                          <td className="py-3.5 pr-4 pl-1 font-bold text-slate-900 dark:text-white">
                             <div className="flex items-center gap-2.5">
-                              <div className="w-8 h-8 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 flex items-center justify-center font-bold text-xs shrink-0">
+                              <div className="w-8 h-8 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-300 flex items-center justify-center font-bold text-xs shrink-0">
                                 {app.company.charAt(0)}
                               </div>
                               <span>{app.company}</span>
                             </div>
                           </td>
-                          <td className="py-3.5 pr-4 text-slate-300 font-medium">{app.role}</td>
+                          <td className="py-3.5 pr-4 text-slate-700 dark:text-slate-300 font-medium">{app.role}</td>
                           <td className="py-3.5 pr-4">
                             <MatchScoreRing score={score} />
                           </td>
@@ -355,7 +355,7 @@ export default function PipelinePage() {
                               {app.status}
                             </Badge>
                           </td>
-                          <td className="py-3.5 text-right pr-1 text-slate-400 font-mono text-[11px]">
+                          <td className="py-3.5 text-right pr-1 text-slate-500 dark:text-slate-400 font-mono text-[11px]">
                             {formatDate(app.date_applied)}
                           </td>
                         </tr>

@@ -41,7 +41,7 @@ const PLATFORMS: PlatformConfig[] = [
     id: "neon",
     name: "Neon PostgreSQL",
     icon: Database,
-    color: "text-emerald-400",
+    color: "text-emerald-600 dark:text-emerald-400",
     bgColor: "bg-emerald-500/10",
     borderColor: "border-emerald-500/20",
     type: "system",
@@ -52,7 +52,7 @@ const PLATFORMS: PlatformConfig[] = [
     id: "requesty",
     name: "Requesty AI Gateway",
     icon: Cpu,
-    color: "text-indigo-400",
+    color: "text-indigo-600 dark:text-indigo-400",
     bgColor: "bg-indigo-500/10",
     borderColor: "border-indigo-500/20",
     type: "system",
@@ -63,7 +63,7 @@ const PLATFORMS: PlatformConfig[] = [
     id: "linkedin",
     name: "LinkedIn Automation",
     icon: Globe,
-    color: "text-sky-400",
+    color: "text-sky-600 dark:text-sky-400",
     bgColor: "bg-sky-500/10",
     borderColor: "border-sky-500/20",
     type: "oauth",
@@ -74,7 +74,7 @@ const PLATFORMS: PlatformConfig[] = [
     id: "github",
     name: "GitHub Developer Sync",
     icon: Code2,
-    color: "text-purple-400",
+    color: "text-purple-600 dark:text-purple-400",
     bgColor: "bg-purple-500/10",
     borderColor: "border-purple-500/20",
     type: "token",
@@ -85,7 +85,7 @@ const PLATFORMS: PlatformConfig[] = [
     id: "whatsapp",
     name: "WhatsApp Instant Alerts",
     icon: MessageCircle,
-    color: "text-emerald-400",
+    color: "text-emerald-600 dark:text-emerald-400",
     bgColor: "bg-emerald-500/10",
     borderColor: "border-emerald-500/20",
     type: "token",
@@ -96,7 +96,7 @@ const PLATFORMS: PlatformConfig[] = [
     id: "naukri",
     name: "Naukri / Job Portals",
     icon: Globe,
-    color: "text-amber-400",
+    color: "text-amber-600 dark:text-amber-400",
     bgColor: "bg-amber-500/10",
     borderColor: "border-amber-500/20",
     type: "token",
@@ -162,7 +162,7 @@ function PlatformCard({ platform }: { platform: PlatformConfig }) {
                 <platform.icon className={cn("w-5 h-5", platform.color)} />
               </div>
               <div>
-                <CardTitle className="text-sm font-bold text-white">{platform.name}</CardTitle>
+                <CardTitle className="text-sm font-bold text-slate-900 dark:text-white">{platform.name}</CardTitle>
                 <CardDescription className="text-[11px] mt-0.5 leading-snug line-clamp-2">
                   {platform.description}
                 </CardDescription>
@@ -175,7 +175,7 @@ function PlatformCard({ platform }: { platform: PlatformConfig }) {
         <CardContent className="pt-2">
           {platform.type === "token" && status === "disconnected" && (
             <div className="mb-3">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
+              <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
                 <Lock className="w-3 h-3" />
                 API Token / Webhook URL
               </label>
@@ -185,12 +185,12 @@ function PlatformCard({ platform }: { platform: PlatformConfig }) {
                   value={token}
                   onChange={(e) => setToken(e.target.value)}
                   placeholder="Enter API key or access token..."
-                  className="w-full bg-slate-950/80 border border-slate-800 rounded-xl pl-3.5 pr-9 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500/50 font-mono"
+                  className="w-full bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 rounded-xl pl-3.5 pr-9 py-2 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:border-indigo-500/50 font-mono"
                 />
                 <button
                   type="button"
                   onClick={() => setShowToken(!showToken)}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white cursor-pointer"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-900 dark:hover:text-white cursor-pointer"
                 >
                   {showToken ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                 </button>
@@ -198,14 +198,14 @@ function PlatformCard({ platform }: { platform: PlatformConfig }) {
             </div>
           )}
 
-          <div className="flex items-center gap-2 pt-2 border-t border-slate-800/60">
+          <div className="flex items-center gap-2 pt-2 border-t border-slate-200 dark:border-slate-800/60">
             {status === "connected" ? (
               <button
                 onClick={handleConnect}
                 disabled={connecting}
-                className="flex-1 py-2 rounded-xl border border-slate-800 hover:bg-slate-800/60 text-slate-300 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                className="flex-1 py-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800/60 text-slate-700 dark:text-slate-300 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
               >
-                <RefreshCw className={cn("w-3.5 h-3.5 text-emerald-400", connecting && "animate-spin")} />
+                <RefreshCw className={cn("w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400", connecting && "animate-spin")} />
                 {connecting ? "Testing Ping..." : "Test Connection"}
               </button>
             ) : (
@@ -229,15 +229,15 @@ export default function ConnectionsPage() {
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       {/* Top Banner Header */}
-      <div className="p-6 sm:p-7 rounded-[24px] bg-slate-900/60 border border-slate-800/80 backdrop-blur-2xl shadow-2xl">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-semibold mb-2">
-          <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+      <div className="p-6 sm:p-7 rounded-[24px] bg-white/90 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800/80 backdrop-blur-2xl shadow-lg dark:shadow-2xl">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-semibold mb-2">
+          <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
           Zero-Knowledge Encrypted Gateway
         </div>
-        <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
+        <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
           Integration & Service Hub
         </h1>
-        <p className="text-xs text-slate-400 mt-1">
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
           Manage third-party platform connections, AI routing models, and automated dispatch credentials
         </p>
       </div>
