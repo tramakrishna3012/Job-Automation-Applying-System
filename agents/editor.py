@@ -1,6 +1,6 @@
 import os
 import asyncio
-from typing import List
+from typing import List, Dict, Any, Optional
 from rich.console import Console
 
 from core.state import ApplicationState, TailoredResume, UserProfile, JobMatch
@@ -26,7 +26,165 @@ HTML_RESUME_PROMPT = (
     "Return ONLY the complete HTML string inside standard <html><body> tags, without any markdown formatting."
 )
 
-def render_resume_pdf_weasyprint(tailored: TailoredResume, html_content: str, job_id: str) -> str:
+def generate_resume_html(
+    profile: Any,
+    template_style: str = "executive"
+) -> str:
+    """Generates pristine, print-ready HTML resume matching the candidate's uploaded resume template."""
+    # Convert Pydantic model or dict to standard dict
+    if hasattr(profile, "model_dump"):
+        data = profile.model_dump()
+    elif isinstance(profile, dict):
+        data = profile
+    else:
+        data = {}
+
+    name = data.get("name", "Candidate Name")
+    email = data.get("email", "")
+    phone = data.get("phone", "")
+    location = data.get("location", "")
+    linkedin = data.get("linkedin", "")
+    github = data.get("github", "")
+    summary = data.get("summary", "")
+    skills = data.get("skills", [])
+    if isinstance(skills, list):
+        skills_str = ", ".join(skills)
+    else:
+        skills_str = str(skills)
+
+    experiences = data.get("experience", [])
+    educations = data.get("education", [])
+
+    contact_parts = [p for p in [email, phone, location, linkedin, github] if p]
+    contact_line = " &bull; ".join(contact_parts)
+
+    # Build experience HTML
+    exp_html = ""
+    for exp in experiences:
+        company = exp.get("company", "")
+        role = exp.get("role") or exp.get("position", "")
+        start_date = exp.get("start_date") or exp.get("date", "")
+        end_date = exp.get("end_date", "")
+        date_str = f"{start_date} — {end_date}" if end_date and start_date else (start_date or end_date or "")
+        loc = exp.get("location", "")
+
+        highlights = exp.get("responsibilities") or exp.get("highlights", [])
+        if isinstance(highlights, list):
+            bullets = "".join([f"<li>{h}</li>" for h in highlights if h])
+        else:
+            bullets = f"<li>{highlights}</li>"
+
+        exp_html += f"""
+        <div class="item">
+            <div class="item-header">
+                <div>
+                    <span class="role">{role}</span>
+                    <span class="company"> | {company}</span>
+                </div>
+                <div class="meta">{date_str}{f' | {loc}' if loc else ''}</div>
+            </div>
+            <ul>{bullets}</ul>
+        </div>
+        """
+
+    # Build education HTML
+    edu_html = ""
+    for edu in educations:
+        inst = edu.get("institution", "")
+        degree = edu.get("degree") or edu.get("area", "")
+        grad_date = edu.get("graduation_date") or edu.get("date", "")
+        gpa = edu.get("gpa", "")
+
+        edu_html += f"""
+        <div class="item">
+            <div class="item-header">
+                <div>
+                    <span class="role">{degree}</span>
+                    <span class="company"> | {inst}</span>
+                </div>
+                <div class="meta">{grad_date}{f' (GPA: {gpa})' if gpa else ''}</div>
+            </div>
+        </div>
+        """
+
+    # Theme-specific CSS styling
+    if template_style == "harvard":
+        theme_css = """
+        body { font-family: 'Georgia', 'Times New Roman', serif; color: #111; line-height: 1.45; }
+        h1 { font-size: 22pt; text-align: center; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+        .contact { text-align: center; font-size: 9.5pt; color: #444; border-bottom: 1.5px solid #111; padding-bottom: 8px; margin-bottom: 14px; }
+        h2 { font-size: 11pt; text-transform: uppercase; letter-spacing: 1.5px; border-bottom: 1px solid #999; margin-top: 14px; margin-bottom: 6px; padding-bottom: 2px; color: #111; }
+        .role { font-weight: bold; color: #000; }
+        .company { font-style: italic; color: #222; }
+        """
+    elif template_style == "tech":
+        theme_css = """
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #0f172a; line-height: 1.4; }
+        h1 { font-size: 20pt; font-weight: 800; color: #1e1b4b; margin-bottom: 2px; }
+        .contact { font-size: 9pt; color: #4338ca; font-weight: 500; margin-bottom: 12px; border-bottom: 2px solid #6366f1; padding-bottom: 6px; }
+        h2 { font-size: 11pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #312e81; margin-top: 14px; margin-bottom: 6px; border-bottom: 1px solid #e0e7ff; padding-bottom: 2px; }
+        .role { font-weight: 700; color: #1e1b4b; }
+        .company { font-weight: 600; color: #4f46e5; }
+        .meta { color: #64748b; font-size: 8.5pt; font-family: monospace; }
+        .skills-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px; font-size: 9pt; }
+        """
+    elif template_style == "minimal":
+        theme_css = """
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #262626; line-height: 1.35; font-size: 9.5pt; }
+        h1 { font-size: 18pt; font-weight: 600; color: #000; margin-bottom: 2px; }
+        .contact { font-size: 8.5pt; color: #525252; margin-bottom: 10px; border-bottom: 1px solid #e5e5e5; padding-bottom: 4px; }
+        h2 { font-size: 10pt; font-weight: bold; text-transform: uppercase; color: #000; margin-top: 12px; margin-bottom: 4px; border-bottom: 1px solid #000; padding-bottom: 1px; }
+        .role { font-weight: bold; color: #000; }
+        .company { color: #525252; }
+        """
+    else:  # Executive (Default)
+        theme_css = """
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 10pt; line-height: 1.42; color: #1e293b; }
+        h1 { font-size: 21pt; font-weight: 700; text-transform: uppercase; color: #0f172a; margin-bottom: 2px; letter-spacing: 0.5px; }
+        .contact { font-size: 9pt; color: #475569; margin-bottom: 14px; border-bottom: 2px solid #0f172a; padding-bottom: 5px; }
+        h2 { font-size: 11pt; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #0f172a; border-bottom: 1px solid #cbd5e1; margin-top: 14px; margin-bottom: 6px; padding-bottom: 2px; }
+        .role { font-weight: 700; color: #0f172a; }
+        .company { color: #334155; font-weight: 500; }
+        .meta { float: right; color: #64748b; font-size: 9pt; }
+        """
+
+    summary_section = f"""
+    <h2>Executive Summary</h2>
+    <div class="summary">{summary}</div>
+    """ if summary else ""
+
+    return f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Resume - {name}</title>
+    <style>
+        @page {{ size: A4; margin: 12mm 15mm; }}
+        * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+        body {{ max-width: 820px; margin: 0 auto; padding: 24px; }}
+        {theme_css}
+        .item {{ margin-bottom: 8px; }}
+        .item-header {{ display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2px; }}
+        .summary {{ font-size: 9.5pt; color: #334155; margin-bottom: 8px; line-height: 1.45; }}
+        ul {{ margin-top: 2px; padding-left: 18px; }}
+        li {{ margin-bottom: 2px; font-size: 9.5pt; color: #334155; }}
+        .skills-content {{ font-size: 9.5pt; color: #334155; line-height: 1.4; }}
+    </style>
+</head>
+<body>
+    <h1>{name}</h1>
+    <div class="contact">{contact_line}</div>
+    {summary_section}
+    <h2>Professional Experience</h2>
+    {exp_html}
+    <h2>Education</h2>
+    {edu_html}
+    <h2>Technical Skills & Core Competencies</h2>
+    <div class="skills-box skills-content">{skills_str}</div>
+</body>
+</html>"""
+
+def render_resume_pdf_weasyprint(tailored: Any, html_content: str, job_id: str) -> str:
     """Renders HTML resume into PDF using WeasyPrint AI Resume Architect engine, with HTML fallback for local environments."""
     output_dir = os.path.join(os.getcwd(), ".resumes")
     os.makedirs(output_dir, exist_ok=True)
@@ -35,63 +193,7 @@ def render_resume_pdf_weasyprint(tailored: TailoredResume, html_content: str, jo
     pdf_path = os.path.join(output_dir, f"resume_{job_id}.pdf")
     
     if "<html>" not in html_content:
-        skills_formatted = ", ".join(tailored.skills)
-        exp_html = ""
-        for exp in tailored.experience:
-            bullets = "".join([f"<li>{h}</li>" for h in exp.highlights])
-            exp_html += f"""
-            <div class="job">
-                <div class="job-header">
-                    <strong>{exp.position}</strong> — <span>{exp.company}</span>
-                    <span class="date">{exp.date} | {exp.location}</span>
-                </div>
-                <ul>{bullets}</ul>
-            </div>
-            """
-            
-        edu_html = ""
-        for edu in tailored.education:
-            edu_html += f"""
-            <div class="edu">
-                <strong>{edu.institution}</strong> — {edu.area} ({edu.date})
-            </div>
-            """
-            
-        html_content = f"""<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <title>Resume - {tailored.name}</title>
-    <style>
-        @page {{ size: A4; margin: 15mm; }}
-        body {{ font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 10pt; line-height: 1.4; color: #1e293b; max-width: 800px; margin: 0 auto; padding: 20px; }}
-        h1 {{ font-size: 20pt; text-transform: uppercase; color: #0f172a; margin-bottom: 2px; }}
-        .contact {{ font-size: 9pt; color: #475569; margin-bottom: 15px; border-bottom: 2px solid #0f172a; padding-bottom: 5px; }}
-        h2 {{ font-size: 12pt; text-transform: uppercase; color: #1e293b; border-bottom: 1px solid #cbd5e1; margin-top: 15px; margin-bottom: 8px; }}
-        .summary {{ margin-bottom: 10px; font-style: italic; }}
-        .job {{ margin-bottom: 10px; }}
-        .job-header {{ font-size: 10pt; margin-bottom: 3px; }}
-        .date {{ float: right; color: #64748b; font-size: 9pt; }}
-        ul {{ margin-top: 3px; padding-left: 18px; }}
-        li {{ margin-bottom: 2px; }}
-        .skills {{ font-weight: 500; }}
-    </style>
-</head>
-<body>
-    <h1>{tailored.name}</h1>
-    <div class="contact">
-        {tailored.email} | {tailored.phone or ''} | {tailored.location or ''}
-    </div>
-    <h2>Executive Summary</h2>
-    <div class="summary">{tailored.summary}</div>
-    <h2>Professional Experience</h2>
-    {exp_html}
-    <h2>Education</h2>
-    {edu_html}
-    <h2>Core Competencies & Skills</h2>
-    <div class="skills">{skills_formatted}</div>
-</body>
-</html>"""
+        html_content = generate_resume_html(tailored, template_style="executive")
 
     with open(html_path, "w", encoding="utf-8") as f:
         f.write(html_content)
@@ -103,6 +205,7 @@ def render_resume_pdf_weasyprint(tailored: TailoredResume, html_content: str, jo
     except (ImportError, OSError, Exception) as e:
         console.print(f"[yellow]WeasyPrint PDF engine notice: {e}. Saved HTML resume at {html_path}[/yellow]")
         return html_path
+
 
 async def tailor_for_job(job: JobMatch, profile: UserProfile) -> JobMatch:
     if not job.description:

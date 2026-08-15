@@ -17,12 +17,14 @@ import {
   Sparkles,
   User,
   Zap,
+  UserCheck,
 } from "lucide-react";
 
 const NAV_ITEMS = [
   { href: "/", label: "Main Dashboard", icon: LayoutDashboard },
   { href: "/pipeline", label: "Job Kanban", icon: Kanban },
   { href: "/resume-studio", label: "Resume Architect", icon: FileText },
+  { href: "/onboarding", label: "Onboarding Wizard", icon: UserCheck },
   { href: "/emails", label: "Cold Outreach", icon: Mail },
   { href: "/branding", label: "Social Branding", icon: Share2 },
   { href: "/connections", label: "Integrations", icon: Link2 },

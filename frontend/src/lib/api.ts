@@ -183,6 +183,16 @@ export const api = {
 
   pipeline: () => fetchJSON<{ stages: Record<string, Application[]> }>("/pipeline"),
 
+  // Resume Architect APIs
+  uploadResume: (formData: FormData) =>
+    postJSON<{ message: string; profile: UserProfile; html: string }>("/resume/upload", formData),
+
+  getResumePreview: (template: string = "executive") =>
+    fetchJSON<{ profile: UserProfile | null; html: string }>(`/resume/preview?template=${encodeURIComponent(template)}`),
+
+  tailorResume: (data: { job_title: string; company: string; description: string; template_style?: string }) =>
+    postJSON<{ job: any; html: string; matched_keywords: string[]; missing_keywords: string[] }>("/resume/tailor", data),
+
   resumeHtml: (jobId: string) => fetchJSON<{ html: string; job_title: string; company: string }>(`/resume/${jobId}`),
 
   brandingPosts: () => fetchJSON<{ posts: BrandingPost[] }>("/branding/posts").then((r) => r.posts),

@@ -15,7 +15,7 @@ from typing import Optional, Dict, Any, List
 from core.graph import app as graph_app
 from core.state import ApplicationState, UserProfile, Education, Experience, JobMatch
 from agents.onboarding import parse_resume_text
-from agents.editor import tailor_for_job
+from agents.editor import tailor_for_job, generate_resume_html
 from agents.visibility import LINKEDIN_BRANDING_SYSTEM_PROMPT, GITHUB_BRANDING_SYSTEM_PROMPT
 from agents.tracker import classify_email_intent
 from core.ai_gateway import async_chat_completion
@@ -239,12 +239,239 @@ async def get_logs(current_user: Dict[str, Any] = Depends(get_current_user)):
     finally:
         conn.close()
 
-# ── Multi-Tenant Profile & Onboarding ────────────────────
+# ── Multi-Tenant Profile & Resume Endpoints ───────────────
+class TailorResumeRequest(BaseModel):
+    job_title: str
+    company: str
+    description: str
+    template_style: Optional[str] = "executive"
+
 @app.get("/api/profile")
 async def get_profile(current_user: Dict[str, Any] = Depends(get_current_user)):
     user_id = str(current_user["id"])
     profile = get_candidate_profile(user_id)
     return {"profile": profile}
+
+@app.post("/api/resume/upload")
+async def upload_resume(
+    file: UploadFile = File(...),
+    target_role: Optional[str] = Form(None),
+    target_experience_level: Optional[str] = Form(None),
+    template_style: Optional[str] = Form("executive"),
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """Uploads, parses with AI, and stores candidate master resume."""
+    user_id = str(current_user["id"])
+    try:
+        fd, temp_pdf_path = tempfile.mkstemp(suffix=".pdf")
+        os.close(fd)
+        with open(temp_pdf_path, "wb") as f:
+            f.write(await file.read())
+
+        resume_text = ""
+        with pdfplumber.open(temp_pdf_path) as pdf:
+            for page in pdf.pages:
+                text = page.extract_text()
+                if text:
+                    resume_text += text + "\n"
+
+        try:
+            os.remove(temp_pdf_path)
+        except Exception:
+            pass
+
+        if not resume_text.strip():
+            raise HTTPException(status_code=400, detail="Could not extract text from uploaded PDF resume.")
+
+        user_profile = await parse_resume_text(resume_text)
+
+        # If name or email were not detected, use account details
+        if not user_profile.name or user_profile.name == "Candidate Name":
+            user_profile.name = current_user.get("name") or current_user["email"].split("@")[0].capitalize()
+        if not user_profile.email:
+            user_profile.email = current_user["email"]
+
+        # Save profile tied to user_id in Neon DB
+        skills_str = ", ".join(user_profile.skills)
+        save_candidate_profile_vector(
+            user_id=user_id,
+            email=current_user["email"],
+            profile_json=user_profile.model_dump(),
+            skills_text=skills_str,
+            embedding=[]
+        )
+
+        user_active_states[user_id] = {
+            "user_id": user_id,
+            "master_resume_path": "uploaded_resume.pdf",
+            "target_role": target_role or "AI Systems Engineer",
+            "target_experience_level": target_experience_level or "Senior",
+            "user_profile": user_profile,
+            "daily_job_queue": [],
+            "application_count": 0,
+            "excel_dashboard_path": f"dashboard_{user_id[:8]}.xlsx"
+        }
+
+        resume_html = generate_resume_html(user_profile, template_style=template_style or "executive")
+
+        log_telemetry("Editor", f"Master Resume uploaded & parsed successfully for {current_user['email']} ({len(user_profile.skills)} skills extracted)", user_id=user_id)
+        return {
+            "message": "Resume uploaded and profile parsed successfully",
+            "profile": user_profile,
+            "html": resume_html
+        }
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Resume processing failed: {str(e)}")
+
+@app.get("/api/resume/preview")
+async def preview_resume(
+    template: str = "executive",
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """Returns HTML preview of candidate's current master resume."""
+    user_id = str(current_user["id"])
+    saved_profile = get_candidate_profile(user_id)
+    if saved_profile:
+        p_obj = UserProfile(**saved_profile)
+    else:
+        # Fallback profile using user's account info
+        p_obj = UserProfile(
+            name=current_user.get("name") or current_user["email"].split("@")[0].capitalize(),
+            email=current_user["email"],
+            phone="+1 (555) 019-2834",
+            location="Remote / Hybrid",
+            skills=["Python", "FastAPI", "React", "PostgreSQL", "pgvector", "Docker", "AI Agents"],
+            experience=[
+                Experience(
+                    company="Technology Solutions",
+                    role="Senior Software & AI Engineer",
+                    start_date="2022",
+                    end_date="Present",
+                    responsibilities=[
+                        "Engineered full-stack applications with FastAPI, Next.js, and PostgreSQL.",
+                        "Implemented autonomous AI workflows and automated application pipelines."
+                    ]
+                )
+            ],
+            education=[
+                Education(
+                    institution="University Department of Computer Science",
+                    degree="B.S. in Computer Science",
+                    graduation_date="2021"
+                )
+            ]
+        )
+
+    html_content = generate_resume_html(p_obj, template_style=template)
+    return {"profile": p_obj, "html": html_content}
+
+@app.post("/api/resume/tailor")
+async def tailor_resume_endpoint(
+    payload: TailorResumeRequest,
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """Tailors the user's master resume specifically to a Target Job Description."""
+    user_id = str(current_user["id"])
+    saved_profile = get_candidate_profile(user_id)
+    if not saved_profile:
+        # Create profile from current user
+        p_obj = UserProfile(
+            name=current_user.get("name") or current_user["email"].split("@")[0].capitalize(),
+            email=current_user["email"],
+            skills=["Python", "FastAPI", "React", "PostgreSQL", "Docker", "AI Agents"],
+            experience=[
+                Experience(
+                    company="AI Tech Labs",
+                    role="Full-Stack AI Engineer",
+                    start_date="2022",
+                    end_date="Present",
+                    responsibilities=["Developed high-performance AI services and PostgreSQL database systems."]
+                )
+            ],
+            education=[
+                Education(
+                    institution="Computer Science Institute",
+                    degree="B.S. Computer Science",
+                    graduation_date="2021"
+                )
+            ]
+        )
+    else:
+        p_obj = UserProfile(**saved_profile)
+
+    test_job = JobMatch(
+        id=str(uuid.uuid4())[:8],
+        title=payload.job_title,
+        company=payload.company,
+        url="https://example.com/job",
+        description=payload.description
+    )
+
+    log_telemetry("Editor", f"Live tailoring resume for '{payload.job_title}' at {payload.company}", user_id=user_id)
+    tailored_job = await tailor_for_job(test_job, p_obj)
+
+    # Keywords analysis
+    jd_lower = payload.description.lower()
+    matched = [s for s in p_obj.skills if s.lower() in jd_lower]
+    missing = [s for s in ["Python", "FastAPI", "PostgreSQL", "Docker", "Kubernetes", "AWS", "CI/CD", "Next.js", "AI"] if s.lower() in jd_lower and s not in matched]
+
+    html_content = generate_resume_html(p_obj, template_style=payload.template_style or "executive")
+    
+    # Check if tailored HTML file was generated
+    if tailored_job.tailored_resume_path and os.path.exists(tailored_job.tailored_resume_path):
+        if tailored_job.tailored_resume_path.endswith(".html"):
+            with open(tailored_job.tailored_resume_path, "r", encoding="utf-8") as f:
+                html_content = f.read()
+
+    return {
+        "job": {
+            "id": test_job.id,
+            "title": test_job.title,
+            "company": test_job.company,
+            "tailored_resume_path": tailored_job.tailored_resume_path
+        },
+        "html": html_content,
+        "matched_keywords": matched,
+        "missing_keywords": missing
+    }
+
+@app.get("/api/resume/{job_id}")
+async def get_resume_by_job(job_id: str, current_user: Dict[str, Any] = Depends(get_current_user)):
+    user_id = str(current_user["id"])
+    conn = get_db_connection()
+    company = "Company"
+    role = "Software Engineer"
+    if conn:
+        try:
+            with conn.cursor() as cur:
+                cur.execute("SELECT company, role FROM job_applications WHERE id::text = %s AND user_id = %s::uuid", (job_id, user_id))
+                row = cur.fetchone()
+                if row:
+                    company = row["company"]
+                    role = row["role"]
+        finally:
+            conn.close()
+
+    # Look for generated resume in .resumes
+    doc_path = os.path.join(os.getcwd(), ".resumes", f"resume_{job_id}.html")
+    if os.path.exists(doc_path):
+        with open(doc_path, "r", encoding="utf-8") as f:
+            html = f.read()
+    else:
+        saved_profile = get_candidate_profile(user_id)
+        p_obj = UserProfile(**saved_profile) if saved_profile else UserProfile(
+            name=current_user.get("name", "Candidate"),
+            email=current_user["email"],
+            skills=["Python", "FastAPI", "React"],
+            experience=[],
+            education=[]
+        )
+        html = generate_resume_html(p_obj, template_style="executive")
+
+    return {"html": html, "job_title": role, "company": company}
 
 @app.post("/api/onboard")
 async def onboard(
@@ -275,6 +502,11 @@ async def onboard(
 
         user_profile = await parse_resume_text(resume_text)
 
+        if not user_profile.name or user_profile.name == "Candidate Name":
+            user_profile.name = current_user.get("name") or current_user["email"].split("@")[0].capitalize()
+        if not user_profile.email:
+            user_profile.email = current_user["email"]
+
         # Save profile tied to user_id in Neon DB
         skills_str = ", ".join(user_profile.skills)
         save_candidate_profile_vector(
@@ -296,8 +528,8 @@ async def onboard(
             "excel_dashboard_path": f"dashboard_{user_id[:8]}.xlsx"
         }
 
-        log_telemetry("System", f"Resume parsed and profile saved for user {current_user['email']}", user_id=user_id)
-        return {"message": "Onboarding successful via Modal Qwen AI Gateway", "profile": user_profile}
+        log_telemetry("System", f"Resume parsed and profile saved for {current_user['email']}", user_id=user_id)
+        return {"message": "Onboarding successful via AI Gateway", "profile": user_profile}
 
     except Exception as e:
         import traceback
@@ -334,40 +566,50 @@ async def start_agents(
         graph_app.invoke(state)
 
     background_tasks.add_task(run_graph)
-    return {"message": "Agents started in background via Modal Qwen3.6 AI Gateway"}
+    return {"message": "Agents started in background via AI Gateway"}
 
 # ── End-to-End Test Execution ────────────────────────────
 @app.post("/api/test-apply")
 async def test_apply(current_user: Dict[str, Any] = Depends(get_current_user)):
     user_id = str(current_user["id"])
-    log_telemetry("System", f"Starting End-to-End AI Agent Test Workflow for {current_user['email']}...", user_id=user_id)
+    user_email = current_user["email"]
+    user_name = current_user.get("name") or user_email.split("@")[0].capitalize()
+    
+    log_telemetry("System", f"Starting End-to-End AI Agent Test Workflow for {user_name} ({user_email})...", user_id=user_id)
 
-    sample_profile = UserProfile(
-        name=current_user.get("name", "Alex Mercer"),
-        email=current_user["email"],
-        phone="+1 (555) 234-5678",
-        location="San Francisco, CA",
-        skills=["Python", "FastAPI", "React", "PostgreSQL", "pgvector", "Docker", "Modal SDK"],
-        experience=[
-            Experience(
-                company="Modal AI Labs",
-                role="Senior Full-Stack AI Engineer",
-                start_date="2022",
-                end_date="Present",
-                responsibilities=[
-                    "Engineered autonomous AI routing system handling multi-GPU vLLM gateways.",
-                    "Designed high-throughput vector database search pipelines using pgvector."
-                ]
-            )
-        ],
-        education=[
-            Education(
-                institution="UC Berkeley",
-                degree="B.S. Computer Science",
-                graduation_date="2021"
-            )
-        ]
-    )
+    # Use candidate's real profile from DB if uploaded
+    saved_profile = get_candidate_profile(user_id)
+    if saved_profile:
+        candidate_profile = UserProfile(**saved_profile)
+        log_telemetry("Editor", f"Loaded custom master resume for {candidate_profile.name} with {len(candidate_profile.skills)} skills", user_id=user_id)
+    else:
+        candidate_profile = UserProfile(
+            name=user_name,
+            email=user_email,
+            phone="+1 (555) 234-5678",
+            location="San Francisco, CA",
+            skills=["Python", "FastAPI", "React", "PostgreSQL", "pgvector", "Docker", "AI Agents"],
+            experience=[
+                Experience(
+                    company="Autonomous AI Labs",
+                    role="Senior Full-Stack AI Engineer",
+                    start_date="2022",
+                    end_date="Present",
+                    responsibilities=[
+                        "Engineered autonomous AI routing systems and multi-agent pipelines.",
+                        "Designed high-throughput vector database search pipelines using pgvector."
+                    ]
+                )
+            ],
+            education=[
+                Education(
+                    institution="University Computer Science Department",
+                    degree="B.S. Computer Science",
+                    graduation_date="2021"
+                )
+            ]
+        )
+        log_telemetry("System", f"Note: Master resume not yet uploaded. Using profile for {user_name}. You can upload your master resume in Resume Architect.", user_id=user_id)
 
     test_job_id = str(uuid.uuid4())[:8]
     test_job = JobMatch(
@@ -381,7 +623,7 @@ async def test_apply(current_user: Dict[str, Any] = Depends(get_current_user)):
 
     log_telemetry("Scout", f"Test Scout matched job: {test_job.title} at {test_job.company}", user_id=user_id)
 
-    tailored_job = await tailor_for_job(test_job, sample_profile)
+    tailored_job = await tailor_for_job(test_job, candidate_profile)
     log_telemetry("Editor", f"Resume Architect compiled tailored resume for {test_job.company}", user_id=user_id)
 
     conn = get_db_connection()
@@ -399,18 +641,18 @@ async def test_apply(current_user: Dict[str, Any] = Depends(get_current_user)):
             conn.close()
 
     linkedin_post = await async_chat_completion(
-        messages=[{"role": "user", "content": "Create a post celebrating our new Modal Qwen3.6 AI Gateway deployment!"}],
+        messages=[{"role": "user", "content": "Create a post celebrating our new AI Gateway deployment!"}],
         system_prompt=LINKEDIN_BRANDING_SYSTEM_PROMPT,
         temperature=0.7
     )
-    log_telemetry("Visibility", "Generated Modal Qwen LinkedIn Personal Branding post", user_id=user_id)
+    log_telemetry("Visibility", f"Generated LinkedIn Personal Branding post for {user_name}", user_id=user_id)
 
     intent = await classify_email_intent("We would love to invite you to an interview call for the AI Engineer role!")
     log_telemetry("Tracker", f"HR Response classified as: {intent}", user_id=user_id)
 
     return {
         "status": "success",
-        "message": "Test job application and AI pipeline completed successfully!",
+        "message": f"Test job application and AI pipeline completed for {user_name}!",
         "job": {
             "id": test_job.id,
             "title": test_job.title,
@@ -428,6 +670,7 @@ async def test_apply(current_user: Dict[str, Any] = Depends(get_current_user)):
 @app.get("/api/pipeline")
 async def get_pipeline(current_user: Dict[str, Any] = Depends(get_current_user)):
     user_id = str(current_user["id"])
+
     conn = get_db_connection()
     if not conn:
         return {"stages": {"discovered": [], "evaluating": [], "generating": [], "applied": []}}
