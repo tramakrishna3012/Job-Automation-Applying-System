@@ -8,8 +8,20 @@ import { Topbar } from "./topbar";
 import { cn } from "@/lib/utils";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { sidebarCollapsed, isAuthenticated } = useAppStore();
+  const { sidebarCollapsed, isAuthenticated, theme } = useAppStore();
   const router = useRouter();
+
+  // Sync theme with HTML root class
+  useEffect(() => {
+    const root = document.documentElement;
+    if (theme === "light") {
+      root.classList.remove("dark");
+      root.classList.add("light");
+    } else {
+      root.classList.remove("light");
+      root.classList.add("dark");
+    }
+  }, [theme]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -20,19 +32,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // Don't render protected content until authenticated
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-[#0b1437] flex items-center justify-center">
+      <div className="min-h-screen bg-[var(--background)] flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-[#7551ff] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0b1437] text-white selection:bg-[#4318ff]/40 selection:text-white">
+    <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)] selection:bg-[#4318ff]/40 selection:text-white transition-colors duration-200">
       {/* Horizon Ambient Glows */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-[#4318ff]/[0.15] blur-[180px] rounded-full" />
-        <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-[#7551ff]/[0.12] blur-[180px] rounded-full" />
-        <div className="absolute top-1/3 left-1/3 w-[35%] h-[35%] bg-[#00f2fe]/[0.05] blur-[220px] rounded-full" />
+        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-[#4318ff]/[0.08] blur-[180px] rounded-full" />
+        <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-[#7551ff]/[0.06] blur-[180px] rounded-full" />
+        <div className="absolute top-1/3 left-1/3 w-[35%] h-[35%] bg-[#00f2fe]/[0.03] blur-[220px] rounded-full" />
       </div>
 
       <Sidebar />
