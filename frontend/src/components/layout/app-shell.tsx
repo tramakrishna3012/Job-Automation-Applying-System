@@ -17,9 +17,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (theme === "light") {
       root.classList.remove("dark");
       root.classList.add("light");
+      root.style.colorScheme = "light";
     } else {
       root.classList.remove("light");
       root.classList.add("dark");
+      root.style.colorScheme = "dark";
     }
   }, [theme]);
 
@@ -39,19 +41,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)] selection:bg-indigo-500/30 selection:text-white transition-colors duration-250 relative overflow-x-hidden stellar-grid-bg">
-      {/* Cosmic Radial Glows */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-        <div className="absolute -top-40 -left-40 w-[600px] h-[600px] bg-indigo-500/[0.08] blur-[160px] rounded-full" />
-        <div className="absolute top-1/3 -right-40 w-[500px] h-[500px] bg-purple-500/[0.06] blur-[180px] rounded-full" />
-        <div className="absolute -bottom-40 left-1/3 w-[600px] h-[600px] bg-cyan-500/[0.04] blur-[200px] rounded-full" />
-      </div>
-
+    <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)] selection:bg-indigo-500/30 selection:text-white relative overflow-x-hidden stellar-grid-bg">
       <Sidebar />
 
       <div
         className={cn(
-          "transition-all duration-300 ease-in-out min-h-screen flex flex-col px-4 sm:px-8 py-4 relative z-10",
+          "transition-all duration-250 ease-in-out min-h-screen flex flex-col px-4 sm:px-8 py-4 relative z-10",
           sidebarCollapsed ? "ml-[76px]" : "ml-[260px]"
         )}
       >

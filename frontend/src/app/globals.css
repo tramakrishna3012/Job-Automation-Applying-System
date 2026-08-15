@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-@custom-variant dark (&:where(.dark, .dark *));
+@variant dark (&:where(.dark, .dark *));
 
 /* ── Stellar Dual-Theme Design System ───────────────────── */
 :root, html.dark {
@@ -29,7 +29,7 @@ html.light {
   --background: #f8fafc;      /* Slate 50 */
   --foreground: #0f172a;      /* Slate 900 */
   --card: #ffffff;            /* Pure White */
-  --card-surface: rgba(255, 255, 255, 0.95);
+  --card-surface: rgba(255, 255, 255, 0.98);
   --card-border: #e2e8f0;     /* Slate 200 */
   --card-hover-border: rgba(99, 102, 241, 0.4);
   --muted: #f1f5f9;
@@ -85,11 +85,11 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
-  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 /* ── Stellar Cosmic Grid Background ─────────────────────── */
 html.dark .stellar-grid-bg {
+  background-color: #080c14;
   background-image: 
     radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.12) 0%, transparent 60%),
     linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
@@ -98,10 +98,11 @@ html.dark .stellar-grid-bg {
 }
 
 html.light .stellar-grid-bg {
+  background-color: #f8fafc;
   background-image: 
-    radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.06) 0%, transparent 60%),
-    linear-gradient(to right, rgba(0, 0, 0, 0.04) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
+    radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.04) 0%, transparent 60%),
+    linear-gradient(to right, rgba(15, 23, 42, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(15, 23, 42, 0.03) 1px, transparent 1px);
   background-size: 100% 100%, 32px 32px, 32px 32px;
 }
 
@@ -115,11 +116,10 @@ html.light .stellar-grid-bg {
 .stellar-card {
   background-color: var(--card-surface);
   border: 1px solid var(--card-border);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-radius: 20px;
-  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.05);
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.03);
   position: relative;
 }
 
@@ -127,27 +127,9 @@ html.dark .stellar-card {
   box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5);
 }
 
-.stellar-card::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: 1px;
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.1), transparent 60%);
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
-}
-
-html.light .stellar-card::before {
-  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.03), transparent 60%);
-}
-
 .stellar-card:hover {
   border-color: var(--card-hover-border);
   transform: translateY(-2px);
-  box-shadow: 0 24px 48px -12px rgba(99, 102, 241, 0.15);
 }
 
 /* ── Stellar Gradient Button ────────────────────────────── */
@@ -156,56 +138,30 @@ html.light .stellar-card::before {
   color: #ffffff;
   border-radius: 9999px;
   font-weight: 600;
-  box-shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.4);
-  transition: all 0.2s ease;
+  box-shadow: 0 4px 14px 0 rgba(99, 102, 241, 0.35);
+  transition: opacity 0.15s ease, transform 0.15s ease;
   position: relative;
   overflow: hidden;
 }
 
-.stellar-gradient-btn::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-  transition: 0.5s;
-}
-
-.stellar-gradient-btn:hover::before {
-  left: 100%;
-}
-
 .stellar-gradient-btn:hover {
-  box-shadow: 0 14px 30px -4px rgba(99, 102, 241, 0.6);
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.45);
   transform: translateY(-1px);
 }
 
 /* ── Stellar Glowing Elements ───────────────────────────── */
 .glow-indigo {
-  box-shadow: 0 0 24px -4px rgba(99, 102, 241, 0.35);
+  box-shadow: 0 0 20px -4px rgba(99, 102, 241, 0.25);
 }
 
 .glow-emerald {
-  box-shadow: 0 0 24px -4px rgba(16, 185, 129, 0.35);
+  box-shadow: 0 0 20px -4px rgba(16, 185, 129, 0.25);
 }
 
 .glow-cyan {
-  box-shadow: 0 0 24px -4px rgba(6, 182, 212, 0.35);
+  box-shadow: 0 0 20px -4px rgba(6, 182, 212, 0.25);
 }
 
 .glow-purple {
-  box-shadow: 0 0 24px -4px rgba(168, 85, 247, 0.35);
-}
-
-/* ── Pulse Radar Animation ──────────────────────────────── */
-@keyframes radar-pulse {
-  0% { transform: scale(0.95); opacity: 0.8; }
-  50% { transform: scale(1.08); opacity: 0.4; }
-  100% { transform: scale(0.95); opacity: 0.8; }
-}
-
-.animate-radar-pulse {
-  animation: radar-pulse 3s infinite ease-in-out;
+  box-shadow: 0 0 20px -4px rgba(168, 85, 247, 0.25);
 }

@@ -89,13 +89,13 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       {/* Top Welcome Hero Banner */}
-      <div className="p-6 sm:p-8 rounded-[24px] bg-white/90 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800/80 backdrop-blur-2xl relative overflow-hidden shadow-lg dark:shadow-2xl">
-        <div className="absolute top-0 right-0 w-[400px] h-full bg-gradient-to-l from-indigo-500/[0.08] via-purple-500/[0.04] to-transparent pointer-events-none" />
+      <div className="p-6 sm:p-8 rounded-[24px] bg-white dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800/80 backdrop-blur-xl relative overflow-hidden shadow-sm dark:shadow-2xl">
+        <div className="absolute top-0 right-0 w-[400px] h-full bg-gradient-to-l from-indigo-500/[0.05] dark:from-indigo-500/[0.08] via-purple-500/[0.03] to-transparent pointer-events-none" />
         
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-semibold mb-2.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-ping" />
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse" />
               Autonomous Agent Zero Active
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
@@ -116,7 +116,7 @@ export default function DashboardPage() {
             </Link>
             <Link
               href="/pipeline"
-              className="stellar-gradient-btn flex items-center gap-2 px-5 py-2.5 text-xs font-bold transition-all cursor-pointer shadow-lg shadow-indigo-500/20"
+              className="stellar-gradient-btn flex items-center gap-2 px-5 py-2.5 text-xs font-bold transition-all cursor-pointer shadow-md"
             >
               <Layers className="w-4 h-4" />
               View Kanban Pipeline
@@ -324,11 +324,8 @@ export default function DashboardPage() {
                       : "text-indigo-600 dark:text-indigo-400 border-indigo-500/30 bg-indigo-500/10";
 
                     return (
-                      <motion.div
+                      <div
                         key={idx}
-                        initial={{ opacity: 0, x: 10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.25, delay: idx * 0.03 }}
                         className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950/80 border border-slate-200/80 dark:border-slate-800/80 hover:border-slate-300 dark:hover:border-slate-700/80 transition-all text-xs"
                       >
                         <div className="flex items-center justify-between mb-1">
@@ -342,7 +339,7 @@ export default function DashboardPage() {
                         <p className="text-[11px] text-slate-700 dark:text-slate-300 leading-relaxed mt-1">
                           {log.message}
                         </p>
-                      </motion.div>
+                      </div>
                     );
                   })
                 )}
