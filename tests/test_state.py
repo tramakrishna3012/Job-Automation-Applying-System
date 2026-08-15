@@ -2,8 +2,8 @@ import pytest
 from core.state import UserProfile, JobMatch, TailoredResume, TailoredExperience, TailoredEducation
 
 def test_user_profile_model(sample_user_profile):
-    assert sample_user_profile.name == "Alex Mercer"
-    assert sample_user_profile.email == "alex.mercer@example.com"
+    assert sample_user_profile.name == "Sarah Connor"
+    assert sample_user_profile.email == "sarah.connor@example.com"
     assert len(sample_user_profile.skills) == 4
     assert sample_user_profile.experience[0].company == "TechCorp"
 

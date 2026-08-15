@@ -5,12 +5,12 @@ from core.state import UserProfile, JobMatch, Experience, Education
 @pytest.fixture
 def sample_user_profile():
     return UserProfile(
-        name="Alex Mercer",
-        email="alex.mercer@example.com",
+        name="Sarah Connor",
+        email="sarah.connor@example.com",
         phone="+1 555-0199",
         location="San Francisco, CA",
-        linkedin="https://linkedin.com/in/alexmercer",
-        github="https://github.com/alexmercer",
+        linkedin="https://linkedin.com/in/sarahconnor",
+        github="https://github.com/sarahconnor",
         skills=["Python", "FastAPI", "React", "PostgreSQL"],
         experience=[
             Experience(

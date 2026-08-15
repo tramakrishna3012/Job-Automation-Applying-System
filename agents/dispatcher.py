@@ -3,6 +3,7 @@ import datetime
 import pandas as pd
 import requests
 import asyncio
+from typing import Optional, Dict, Any, List
 from playwright.async_api import async_playwright
 from rich.console import Console
 
@@ -15,8 +16,8 @@ from core.config import (
 
 console = Console()
 
-def update_neon_dashboard(job: JobMatch, status: str):
-    """Appends application status to Neon PostgreSQL dashboard."""
+def update_neon_dashboard(job: JobMatch, status: str, user_id: Optional[str] = None):
+    """Appends application status to Neon PostgreSQL dashboard scoped to user_id."""
     conn = get_db_connection()
     if not conn:
         console.print("[yellow]Neon DB not configured. Skipping DB update.[/yellow]")
@@ -24,10 +25,16 @@ def update_neon_dashboard(job: JobMatch, status: str):
         
     try:
         with conn.cursor() as cur:
-            cur.execute(
-                "INSERT INTO job_applications (company, role, url, status) VALUES (%s, %s, %s, %s)",
-                (job.company, job.title, job.url, status)
-            )
+            if user_id:
+                cur.execute(
+                    "INSERT INTO job_applications (user_id, company, role, url, status) VALUES (%s::uuid, %s, %s, %s, %s)",
+                    (user_id, job.company, job.title, job.url, status)
+                )
+            else:
+                cur.execute(
+                    "INSERT INTO job_applications (company, role, url, status) VALUES (%s, %s, %s, %s)",
+                    (job.company, job.title, job.url, status)
+                )
         console.print(f"[green]Neon DB updated: {status} for {job.company}[/green]")
     except Exception as e:
         console.print(f"[red]Failed to update Neon dashboard: {e}[/red]")
@@ -123,6 +130,7 @@ async def process_applications(state: ApplicationState) -> ApplicationState:
     queue = state.get("daily_job_queue", [])
     profile = state.get("user_profile")
     dashboard_path = state.get("excel_dashboard_path")
+    user_id = state.get("user_id")
     
     if not queue or not profile:
         return state
@@ -141,10 +149,11 @@ async def process_applications(state: ApplicationState) -> ApplicationState:
             
             if success:
                 state["application_count"] += 1
-                update_neon_dashboard(job, "Applied")
+                status = "Applied" if AUTO_SUBMIT_ENABLED else "Simulated"
+                update_neon_dashboard(job, status, user_id=user_id)
                 send_whatsapp_notification(job)
             else:
-                update_neon_dashboard(job, "Failed Auto-Apply")
+                update_neon_dashboard(job, "Failed Auto-Apply", user_id=user_id)
                 
             await page.close()
             await asyncio.sleep(1) # Be nice to servers

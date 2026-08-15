@@ -57,7 +57,8 @@ class TailoredResume(BaseModel):
     education: List[TailoredEducation]
     skills: List[str]
     
-class ApplicationState(TypedDict):
+class ApplicationState(TypedDict, total=False):
+    user_id: Optional[str]
     master_resume_path: str
     target_role: str
     target_experience_level: str
@@ -65,3 +66,4 @@ class ApplicationState(TypedDict):
     daily_job_queue: List[JobMatch]
     application_count: int
     excel_dashboard_path: str
+    hr_list_path: Optional[str]

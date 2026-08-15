@@ -56,8 +56,9 @@ export default function BrandingPage() {
     mutationFn: () => api.generateBrandingPost("linkedin"),
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["logs"] });
-      if (data?.post_content) {
-        setPreviewContent(data.post_content);
+      const content = data?.post_content || data?.post;
+      if (content) {
+        setPreviewContent(content);
         setPreviewOpen(true);
       }
     },

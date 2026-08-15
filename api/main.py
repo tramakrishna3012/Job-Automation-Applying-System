@@ -810,9 +810,9 @@ async def generate_branding_post(current_user: Dict[str, Any] = Depends(get_curr
             temperature=0.7
         )
         log_telemetry("Visibility", f"Generated LinkedIn branding post: {post[:80]}...", user_id=user_id)
-        return {"post": post}
+        return {"post": post, "post_content": post}
     except Exception as e:
-        return {"error": str(e)}
+        return {"error": str(e), "post_content": ""}
 
 @app.websocket("/api/stream")
 async def websocket_endpoint(websocket: WebSocket):
