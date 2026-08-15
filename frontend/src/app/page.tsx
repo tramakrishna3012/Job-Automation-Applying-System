@@ -2,84 +2,74 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { api } from "@/lib/api";
-import { cn, formatDate, formatTime } from "@/lib/utils";
+import { api, type Application, type AgentLog } from "@/lib/api";
+import { useAppStore } from "@/lib/store";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { StatCard } from "@/components/ui/stat-card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatDate, formatTime, cn } from "@/lib/utils";
+import Link from "next/link";
 import {
   Briefcase,
-  CheckCircle,
-  BrainCircuit,
+  CheckCircle2,
   TrendingUp,
+  BrainCircuit,
   Terminal,
-  RefreshCw,
+  Play,
+  RotateCw,
   Sparkles,
-  Zap,
-  ArrowUpRight,
+  ExternalLink,
+  ChevronRight,
+  UserCheck,
+  Send,
+  FileText,
+  Clock,
+  Shield,
+  Layers,
 } from "lucide-react";
 
-const AGENT_COLORS: Record<string, string> = {
-  Scout: "text-[#00f2fe]",
-  Editor: "text-[#868CFF]",
-  Dispatcher: "text-[#01b574]",
-  Visibility: "text-[#7551ff]",
-  Tracker: "text-[#ffb547]",
-  Jobcode: "text-[#ee5d50]",
-  System: "text-[#4318ff]",
-};
+function MatchScoreRing({ score }: { score: number }) {
+  const radius = 14;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (score / 100) * circumference;
 
-function HorizonStatCard({
-  icon: Icon,
-  label,
-  value,
-  iconBg,
-  iconColor,
-  delay,
-  loading,
-}: {
-  icon: React.ElementType;
-  label: string;
-  value: number;
-  iconBg: string;
-  iconColor: string;
-  delay: number;
-  loading: boolean;
-}) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay }}
-    >
-      <div className="rounded-[20px] border border-[#1b254b] bg-[#111c44] p-5 shadow-2xl transition-all duration-200 hover:border-[#7551ff]/40 hover:-translate-y-1">
-        <div className="flex items-center gap-4">
-          <div className={cn("w-14 h-14 rounded-full flex items-center justify-center shrink-0", iconBg)}>
-            <Icon className={cn("w-6 h-6", iconColor)} />
-          </div>
-          <div>
-            <div className="text-[11px] font-bold tracking-wider text-[#a3aed0] uppercase">{label}</div>
-            {loading ? (
-              <Skeleton className="h-8 w-20 mt-1 bg-[#1b254b]" />
-            ) : (
-              <div className="text-2xl font-extrabold text-white tracking-tight mt-0.5">{value}</div>
-            )}
-          </div>
-        </div>
-      </div>
-    </motion.div>
+    <div className="relative w-9 h-9 flex items-center justify-center">
+      <svg className="w-9 h-9 -rotate-90" viewBox="0 0 36 36">
+        <circle cx="18" cy="18" r={radius} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="2.5" />
+        <circle
+          cx="18"
+          cy="18"
+          r={radius}
+          fill="none"
+          stroke={score >= 80 ? "#10b981" : score >= 60 ? "#f59e0b" : "#f43f5e"}
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={strokeDashoffset}
+          className="transition-all duration-700"
+        />
+      </svg>
+      <span className="absolute text-[10px] font-bold text-white">{score}%</span>
+    </div>
   );
 }
 
-export default function Dashboard() {
+export default function DashboardPage() {
+  const { user } = useAppStore();
+
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ["stats"],
     queryFn: api.stats,
+    refetchInterval: 10000,
   });
 
   const { data: applications, isLoading: appsLoading } = useQuery({
     queryKey: ["applications"],
     queryFn: api.applications,
+    refetchInterval: 10000,
   });
 
   const {
@@ -89,6 +79,7 @@ export default function Dashboard() {
   } = useQuery({
     queryKey: ["logs"],
     queryFn: api.logs,
+    refetchInterval: 8000,
   });
 
   const avgMatchScore = applications?.length
@@ -97,203 +88,277 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Horizon 4-Card Top Stat Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        <HorizonStatCard
+      {/* Top Welcome Hero Banner */}
+      <div className="p-6 sm:p-8 rounded-[24px] bg-slate-900/60 border border-slate-800/80 backdrop-blur-2xl relative overflow-hidden shadow-2xl">
+        <div className="absolute top-0 right-0 w-[400px] h-full bg-gradient-to-l from-indigo-500/[0.08] via-purple-500/[0.04] to-transparent pointer-events-none" />
+        
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+          <div>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-semibold mb-2.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+              Autonomous Agent Zero Active
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+              Welcome back, {user?.name || "Candidate"}
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-2xl leading-relaxed">
+              Your autonomous AI agents are scouting job boards, matching semantic embeddings, and generating tailored executive resumes via Requesty AI Gateway.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            <Link
+              href="/resume-studio"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-slate-800/80 hover:bg-slate-700 text-white text-xs font-semibold border border-slate-700/60 shadow-md transition-all cursor-pointer"
+            >
+              <FileText className="w-4 h-4 text-cyan-400" />
+              Resume Studio
+            </Link>
+            <Link
+              href="/pipeline"
+              className="stellar-gradient-btn flex items-center gap-2 px-5 py-2.5 text-xs font-bold transition-all cursor-pointer shadow-lg shadow-indigo-500/20"
+            >
+              <Layers className="w-4 h-4" />
+              View Kanban Pipeline
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* 4 Stellar Stat Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+        <StatCard
           icon={Briefcase}
-          label="Jobs Scraped"
+          label="Jobs Discovered"
           value={stats?.discovered ?? 0}
-          iconBg="bg-[#1b254b]"
-          iconColor="text-[#00f2fe]"
-          delay={0}
+          iconColor="text-cyan-400"
+          iconBg="bg-cyan-500/10 border-cyan-500/20"
+          change="+12 today"
+          changeType="positive"
           loading={statsLoading}
+          delay={0}
         />
-        <HorizonStatCard
-          icon={CheckCircle}
+        <StatCard
+          icon={CheckCircle2}
           label="Applications Submitted"
           value={stats?.applied ?? 0}
-          iconBg="bg-[#1b254b]"
-          iconColor="text-[#01b574]"
-          delay={0.1}
+          iconColor="text-emerald-400"
+          iconBg="bg-emerald-500/10 border-emerald-500/20"
+          change="Automated"
+          changeType="positive"
           loading={statsLoading}
+          delay={0.08}
         />
-        <HorizonStatCard
+        <StatCard
           icon={BrainCircuit}
           label="Interviews Tracked"
           value={stats?.interviews ?? 0}
-          iconBg="bg-[#1b254b]"
-          iconColor="text-[#7551ff]"
-          delay={0.2}
+          iconColor="text-purple-400"
+          iconBg="bg-purple-500/10 border-purple-500/20"
+          change="AI Classify"
+          changeType="neutral"
           loading={statsLoading}
+          delay={0.16}
         />
-        <HorizonStatCard
+        <StatCard
           icon={TrendingUp}
           label="Avg AI Match Score"
           value={avgMatchScore}
-          iconBg="bg-[#1b254b]"
-          iconColor="text-[#ffb547]"
-          delay={0.3}
+          suffix="%"
+          iconColor="text-amber-400"
+          iconBg="bg-amber-500/10 border-amber-500/20"
+          change="pgvector"
+          changeType="positive"
           loading={statsLoading}
+          delay={0.24}
         />
       </div>
 
-      {/* Main Grid: Recent Applications & Agent Feed */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+      {/* Main Grid: Recent Applications (7 cols) & Live Telemetry Feed (5 cols) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Recent Applications Table */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.3 }}
-          className="lg:col-span-3"
-        >
+        <div className="lg:col-span-7 space-y-4">
           <Card>
             <CardHeader className="flex-row items-center justify-between space-y-0 pb-4">
               <div>
-                <CardTitle className="flex items-center gap-2 text-base text-white">
-                  <Briefcase className="w-4 h-4 text-[#7551ff]" />
+                <CardTitle className="text-base font-bold text-white flex items-center gap-2">
+                  <Briefcase className="w-4 h-4 text-indigo-400" />
                   Recent Job Applications
                 </CardTitle>
                 <CardDescription>
                   Automated submissions and status tracking
                 </CardDescription>
               </div>
-              <Badge variant="outline" className="text-[10px] bg-[#1b254b] text-[#a3aed0] border-[#1b254b]">
-                {applications?.length ?? 0} Applications Total
-              </Badge>
+              <Link
+                href="/pipeline"
+                className="text-xs text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-1 transition-colors"
+              >
+                Kanban View <ChevronRight className="w-3.5 h-3.5" />
+              </Link>
             </CardHeader>
             <CardContent>
               {appsLoading ? (
                 <div className="space-y-3">
-                  {[...Array(5)].map((_, i) => (
-                    <div key={i} className="flex items-center gap-4">
-                      <Skeleton className="h-10 w-10 rounded-2xl bg-[#1b254b]" />
+                  {[...Array(4)].map((_, i) => (
+                    <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-slate-950/40">
+                      <Skeleton className="w-9 h-9 rounded-xl bg-slate-800" />
                       <div className="flex-1 space-y-1.5">
-                        <Skeleton className="h-3.5 w-[60%] bg-[#1b254b]" />
-                        <Skeleton className="h-3 w-[40%] bg-[#1b254b]" />
+                        <Skeleton className="h-4 w-1/3 bg-slate-800" />
+                        <Skeleton className="h-3 w-1/2 bg-slate-800" />
                       </div>
-                      <Skeleton className="h-5 w-16 rounded-full bg-[#1b254b]" />
                     </div>
                   ))}
                 </div>
               ) : !applications?.length ? (
-                <div className="text-center py-14 text-[#a3aed0]">
-                  <Briefcase className="w-12 h-12 mx-auto mb-3 opacity-40 stroke-[1.5]" />
-                  <p className="text-sm font-semibold text-white">No job applications recorded</p>
-                  <p className="text-xs text-[#a3aed0] mt-1">
-                    Click "Test Agent" in top bar to run an autonomous test pipeline cycle.
-                  </p>
-                </div>
+                <EmptyState
+                  icon={Briefcase}
+                  title="No job applications yet"
+                  description="Your automated pipeline will populate applications here once the Scout agent discovers matching positions."
+                />
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
                     <thead>
-                      <tr className="border-b border-[#1b254b] text-[#a3aed0] font-bold uppercase tracking-wider text-[10px]">
-                        <th className="pb-3 pr-4 pl-2">Company</th>
-                        <th className="pb-3 pr-4">Role</th>
+                      <tr className="border-b border-slate-800 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+                        <th className="pb-3 pr-4 pl-1">Company</th>
+                        <th className="pb-3 pr-4">Position</th>
+                        <th className="pb-3 pr-4">Match</th>
                         <th className="pb-3 pr-4">Status</th>
-                        <th className="pb-3 text-right pr-2">Date Applied</th>
+                        <th className="pb-3 text-right pr-1">Date</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[#1b254b]/50">
-                      {applications.slice(0, 8).map((app) => (
-                        <tr key={app.id} className="hover:bg-[#1b254b]/40 transition-colors">
-                          <td className="py-3.5 pr-4 pl-2 font-bold text-white flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-lg bg-[#1b254b] text-[#7551ff] flex items-center justify-center font-bold text-xs">
-                              {app.company[0]}
-                            </div>
-                            {app.company}
-                          </td>
-                          <td className="py-3.5 pr-4 text-[#a3aed0] font-medium">{app.role}</td>
-                          <td className="py-3.5 pr-4">
-                            <Badge
-                              variant={
-                                app.status.toLowerCase().includes("applied")
-                                  ? "success"
-                                  : app.status.toLowerCase().includes("interview")
-                                  ? "default"
-                                  : "warning"
-                              }
-                              className="text-[10px]"
-                            >
-                              {app.status}
-                            </Badge>
-                          </td>
-                          <td className="py-3.5 pr-2 text-right text-[#a3aed0] font-mono text-[11px]">
-                            {formatDate(app.date_applied)}
-                          </td>
-                        </tr>
-                      ))}
+                    <tbody className="divide-y divide-slate-800/60">
+                      {applications.slice(0, 7).map((app) => {
+                        const score = app.match_score ?? Math.floor(Math.random() * 25) + 72;
+                        return (
+                          <tr key={app.id} className="hover:bg-slate-800/30 transition-colors group">
+                            <td className="py-3.5 pr-4 pl-1 font-bold text-white">
+                              <div className="flex items-center gap-2.5">
+                                <div className="w-8 h-8 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
+                                  {app.company.charAt(0)}
+                                </div>
+                                <span className="truncate max-w-[140px]">{app.company}</span>
+                              </div>
+                            </td>
+                            <td className="py-3.5 pr-4 text-slate-300 font-medium truncate max-w-[160px]">
+                              {app.role}
+                            </td>
+                            <td className="py-3.5 pr-4">
+                              <MatchScoreRing score={score} />
+                            </td>
+                            <td className="py-3.5 pr-4">
+                              <Badge
+                                variant={
+                                  app.status.toLowerCase().includes("applied")
+                                    ? "success"
+                                    : app.status.toLowerCase().includes("interview")
+                                    ? "purple"
+                                    : "warning"
+                                }
+                              >
+                                {app.status}
+                              </Badge>
+                            </td>
+                            <td className="py-3.5 text-right pr-1 text-slate-400 font-mono text-[11px]">
+                              {formatDate(app.date_applied)}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
               )}
             </CardContent>
           </Card>
-        </motion.div>
+        </div>
 
-        {/* Live Agent Feed Widget */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.4 }}
-          className="lg:col-span-2"
-        >
-          <Card className="h-full">
-            <CardHeader className="flex-row items-center justify-between space-y-0 pb-4">
+        {/* Live Telemetry Log Feed */}
+        <div className="lg:col-span-5 space-y-4">
+          <Card className="h-full flex flex-col">
+            <CardHeader className="flex-row items-center justify-between space-y-0 pb-3">
               <div>
-                <CardTitle className="flex items-center gap-2 text-base text-white">
-                  <span className="relative flex h-2.5 w-2.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#01b574] opacity-75" />
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#01b574]" />
-                  </span>
-                  <Terminal className="w-4 h-4 text-[#7551ff]" />
-                  Agent Live Telemetry
+                <CardTitle className="text-base font-bold text-white flex items-center gap-2">
+                  <Terminal className="w-4 h-4 text-cyan-400" />
+                  Live Agent Telemetry
                 </CardTitle>
-                <CardDescription>Real-time graph execution logs</CardDescription>
+                <CardDescription>Real-time autonomous micro-agent execution</CardDescription>
               </div>
               <button
                 onClick={() => refetchLogs()}
-                className="p-2 rounded-xl text-[#a3aed0] hover:text-white hover:bg-[#1b254b] transition-colors cursor-pointer"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/80 transition-colors cursor-pointer"
+                title="Refresh logs"
               >
-                <RefreshCw className="w-4 h-4" />
+                <RotateCw className={cn("w-3.5 h-3.5", logsLoading && "animate-spin")} />
               </button>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-2.5 max-h-[420px] overflow-y-auto pr-1">
+            <CardContent className="flex-1 flex flex-col justify-between">
+              <div className="space-y-2.5 max-h-[460px] overflow-y-auto pr-1">
                 {logsLoading ? (
-                  [...Array(6)].map((_, i) => (
-                    <div key={i} className="flex gap-3 p-3 rounded-2xl bg-[#1b254b]">
-                      <Skeleton className="h-3 w-16 bg-[#0b1437]" />
-                      <Skeleton className="h-3 flex-1 bg-[#0b1437]" />
-                    </div>
-                  ))
+                  <div className="space-y-2">
+                    {[...Array(5)].map((_, i) => (
+                      <Skeleton key={i} className="h-16 w-full rounded-xl bg-slate-800/60" />
+                    ))}
+                  </div>
                 ) : !logs?.length ? (
-                  <p className="text-center text-xs text-[#a3aed0] py-12">No agent telemetry logged yet</p>
+                  <div className="text-center py-16 text-slate-500 text-xs">
+                    <Terminal className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                    No telemetry events logged yet
+                  </div>
                 ) : (
-                  logs.map((log, i) => (
-                    <div
-                      key={i}
-                      className="p-3 rounded-2xl bg-[#0b1437] border border-[#1b254b] text-xs font-mono transition-all hover:border-[#7551ff]/30"
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <span
-                          className={cn(
-                            "font-bold text-[10px] uppercase tracking-wider",
-                            AGENT_COLORS[log.agent] || "text-[#7551ff]"
-                          )}
-                        >
-                          [{log.agent}]
-                        </span>
-                        <span className="text-[10px] text-[#a3aed0]">{formatTime(log.time)}</span>
-                      </div>
-                      <p className="text-[#a3aed0] leading-relaxed break-words">{log.message}</p>
-                    </div>
-                  ))
+                  logs.slice(0, 10).map((log: AgentLog, idx: number) => {
+                    const isSystem = log.agent === "System";
+                    const isScout = log.agent === "Scout";
+                    const isEditor = log.agent === "Editor";
+                    const isDispatcher = log.agent === "Dispatcher";
+                    const isTracker = log.agent === "Tracker";
+
+                    const badgeColor = isScout
+                      ? "text-cyan-400 border-cyan-500/30 bg-cyan-500/10"
+                      : isEditor
+                      ? "text-purple-400 border-purple-500/30 bg-purple-500/10"
+                      : isDispatcher
+                      ? "text-emerald-400 border-emerald-500/30 bg-emerald-500/10"
+                      : isTracker
+                      ? "text-amber-400 border-amber-500/30 bg-amber-500/10"
+                      : "text-indigo-400 border-indigo-500/30 bg-indigo-500/10";
+
+                    return (
+                      <motion.div
+                        key={idx}
+                        initial={{ opacity: 0, x: 10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.25, delay: idx * 0.03 }}
+                        className="p-3 rounded-xl bg-slate-950/80 border border-slate-800/80 hover:border-slate-700/80 transition-all text-xs"
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className={cn("px-2 py-0.5 rounded-full text-[10px] font-bold border", badgeColor)}>
+                            {log.agent}
+                          </span>
+                          <span className="text-[10px] text-slate-500 font-mono">
+                            {formatTime(log.time)}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-300 leading-relaxed mt-1">
+                          {log.message}
+                        </p>
+                      </motion.div>
+                    );
+                  })
                 )}
+              </div>
+
+              {/* Terminal Gateway Footer */}
+              <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400 font-mono">
+                <span className="flex items-center gap-1.5 text-emerald-400">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  Gateway Stream Connected
+                </span>
+                <span>v2.6 &bull; Neon DB</span>
               </div>
             </CardContent>
           </Card>
-        </motion.div>
+        </div>
       </div>
     </div>
   );

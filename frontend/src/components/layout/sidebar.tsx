@@ -18,16 +18,27 @@ import {
   User,
   Zap,
   UserCheck,
+  Cpu,
 } from "lucide-react";
 
-const NAV_ITEMS = [
-  { href: "/", label: "Main Dashboard", icon: LayoutDashboard },
-  { href: "/pipeline", label: "Job Kanban", icon: Kanban },
-  { href: "/resume-studio", label: "Resume Architect", icon: FileText },
-  { href: "/onboarding", label: "Onboarding Wizard", icon: UserCheck },
-  { href: "/emails", label: "Cold Outreach", icon: Mail },
-  { href: "/branding", label: "Social Branding", icon: Share2 },
-  { href: "/connections", label: "Integrations", icon: Link2 },
+const NAV_GROUPS = [
+  {
+    title: "AUTOMATION CORE",
+    items: [
+      { href: "/", label: "AI Dashboard", icon: LayoutDashboard },
+      { href: "/pipeline", label: "Job Kanban", icon: Kanban, badge: "Live" },
+      { href: "/resume-studio", label: "Resume Studio", icon: FileText },
+      { href: "/onboarding", label: "Candidate Setup", icon: UserCheck },
+    ],
+  },
+  {
+    title: "OUTREACH & VISIBILITY",
+    items: [
+      { href: "/emails", label: "Cold Outreach", icon: Mail },
+      { href: "/branding", label: "Social Branding", icon: Share2 },
+      { href: "/connections", label: "Integrations", icon: Link2 },
+    ],
+  },
 ];
 
 export function Sidebar() {
@@ -37,13 +48,13 @@ export function Sidebar() {
   return (
     <motion.aside
       initial={false}
-      animate={{ width: sidebarCollapsed ? 76 : 270 }}
+      animate={{ width: sidebarCollapsed ? 76 : 260 }}
       transition={{ duration: 0.25, ease: "easeInOut" }}
-      className="fixed left-0 top-0 bottom-0 z-40 flex flex-col border-r border-[#1b254b] bg-[#111c44]/95 backdrop-blur-xl shadow-2xl"
+      className="fixed left-0 top-0 bottom-0 z-40 flex flex-col border-r border-slate-800/80 bg-slate-950/90 backdrop-blur-2xl shadow-2xl"
     >
-      {/* Horizon UI Logo Header */}
-      <div className="flex items-center gap-3 px-5 h-20 border-b border-[#1b254b]">
-        <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#868CFF] to-[#4318FF] flex items-center justify-center shadow-lg shadow-[#4318FF]/30 shrink-0">
+      {/* Stellar Brand Header */}
+      <div className="flex items-center gap-3 px-5 h-20 border-b border-slate-800/80">
+        <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/25 shrink-0">
           <Sparkles className="w-5 h-5 text-white" />
         </div>
         <AnimatePresence>
@@ -55,81 +66,97 @@ export function Sidebar() {
               className="overflow-hidden whitespace-nowrap"
             >
               <div className="flex items-center gap-1.5">
-                <span className="text-base font-extrabold text-white tracking-wider">HORIZON</span>
-                <span className="text-base font-extrabold text-[#7551ff]">UI</span>
+                <span className="text-base font-extrabold text-white tracking-wider">JOBAUTO</span>
+                <span className="text-base font-extrabold text-indigo-400">AI</span>
               </div>
-              <span className="text-[10px] font-semibold tracking-widest text-[#a3aed0] uppercase">
-                AI JOB AUTOMATION
+              <span className="text-[10px] font-semibold tracking-widest text-slate-400 uppercase">
+                AUTONOMOUS PLATFORM
               </span>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
 
-      {/* Navigation Links */}
-      <nav className="flex-1 px-3 py-6 space-y-1.5">
-        {NAV_ITEMS.map((item) => {
-          const isActive = pathname === item.href;
-          return (
-            <Link key={item.href} href={item.href}>
-              <div
-                className={cn(
-                  "group relative flex items-center gap-3.5 rounded-2xl px-4 py-3 text-sm font-semibold transition-all duration-200 cursor-pointer",
-                  isActive
-                    ? "bg-[#1b254b] text-white shadow-md shadow-[#0b1437]/50"
-                    : "text-[#a3aed0] hover:text-white hover:bg-[#1b254b]/50"
-                )}
-              >
-                <item.icon
-                  className={cn(
-                    "w-5 h-5 shrink-0 transition-colors",
-                    isActive ? "text-[#7551ff]" : "text-[#a3aed0] group-hover:text-white"
-                  )}
-                />
-                <AnimatePresence>
-                  {!sidebarCollapsed && (
-                    <motion.span
-                      initial={{ opacity: 0, width: 0 }}
-                      animate={{ opacity: 1, width: "auto" }}
-                      exit={{ opacity: 0, width: 0 }}
-                      className="overflow-hidden whitespace-nowrap text-xs font-bold"
-                    >
-                      {item.label}
-                    </motion.span>
-                  )}
-                </AnimatePresence>
-
-                {/* Horizon Active Bar Indicator */}
-                {isActive && (
-                  <motion.div
-                    layoutId="activeBar"
-                    className="absolute right-0 top-2 bottom-2 w-1.5 rounded-l-full bg-gradient-to-b from-[#868CFF] to-[#4318FF]"
-                  />
-                )}
+      {/* Navigation Groups */}
+      <nav className="flex-1 px-3 py-5 space-y-6 overflow-y-auto">
+        {NAV_GROUPS.map((group, gIdx) => (
+          <div key={gIdx} className="space-y-1">
+            {!sidebarCollapsed && (
+              <div className="px-3 pb-1.5 text-[10px] font-bold tracking-widest text-slate-500 uppercase">
+                {group.title}
               </div>
-            </Link>
-          );
-        })}
+            )}
+            {group.items.map((item) => {
+              const isActive = pathname === item.href;
+              return (
+                <Link key={item.href} href={item.href}>
+                  <div
+                    className={cn(
+                      "group relative flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-xs font-semibold transition-all duration-200 cursor-pointer",
+                      isActive
+                        ? "bg-gradient-to-r from-indigo-500/15 to-purple-500/10 border border-indigo-500/30 text-white shadow-md shadow-indigo-500/5"
+                        : "text-slate-400 hover:text-white hover:bg-slate-900/60 border border-transparent"
+                    )}
+                  >
+                    <item.icon
+                      className={cn(
+                        "w-4 h-4 shrink-0 transition-colors",
+                        isActive ? "text-indigo-400" : "text-slate-400 group-hover:text-white"
+                      )}
+                    />
+                    <AnimatePresence>
+                      {!sidebarCollapsed && (
+                        <motion.span
+                          initial={{ opacity: 0, width: 0 }}
+                          animate={{ opacity: 1, width: "auto" }}
+                          exit={{ opacity: 0, width: 0 }}
+                          className="overflow-hidden whitespace-nowrap flex-1"
+                        >
+                          {item.label}
+                        </motion.span>
+                      )}
+                    </AnimatePresence>
+
+                    {/* Badge */}
+                    {!sidebarCollapsed && item.badge && (
+                      <span className="px-1.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 text-[9px] font-mono border border-indigo-500/30">
+                        {item.badge}
+                      </span>
+                    )}
+
+                    {/* Active Line */}
+                    {isActive && (
+                      <motion.div
+                        layoutId="activeSidebarPill"
+                        className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-gradient-to-b from-indigo-400 to-purple-500"
+                      />
+                    )}
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        ))}
       </nav>
 
-      {/* Horizon Pro Upgrade Card */}
+      {/* Stellar Agent Status Pulse Box */}
       {!sidebarCollapsed && (
-        <div className="mx-4 mb-4 p-4 rounded-[20px] bg-gradient-to-br from-[#1b254b] to-[#0b1437] border border-[#7551ff]/20 text-center relative overflow-hidden shadow-xl">
-          <div className="w-10 h-10 mx-auto mb-2 rounded-full bg-[#4318ff]/20 flex items-center justify-center text-[#7551ff]">
-            <Zap className="w-5 h-5" />
+        <div className="mx-3.5 mb-3 p-3.5 rounded-2xl bg-gradient-to-br from-slate-900/90 to-slate-950/90 border border-indigo-500/20 relative overflow-hidden shadow-lg">
+          <div className="flex items-center gap-2 mb-1.5">
+            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+            <span className="text-xs font-bold text-white">Agent Zero Active</span>
           </div>
-          <h4 className="text-xs font-bold text-white mb-1">Horizon AI Agent Active</h4>
-          <p className="text-[10px] text-[#a3aed0] mb-3">6-hour autonomous scheduling cycle running</p>
-          <div className="w-full py-1.5 rounded-xl bg-[#4318ff] text-white text-[10px] font-bold tracking-wider uppercase shadow-md shadow-[#4318ff]/30">
-            System Online
-          </div>
+          <p className="text-[10px] text-slate-400 leading-snug">
+            Autonomous 6h application cycle operational via Requesty Gateway
+          </p>
         </div>
       )}
 
       {/* Collapse Toggle */}
       <button
         onClick={toggleSidebar}
-        className="mx-3 mb-2 flex items-center justify-center rounded-xl p-2 text-[#a3aed0] hover:text-white hover:bg-[#1b254b] transition-colors cursor-pointer"
+        className="mx-3 mb-2 flex items-center justify-center rounded-xl p-2 text-slate-400 hover:text-white hover:bg-slate-900/80 transition-colors cursor-pointer"
+        title="Toggle Sidebar"
       >
         <ChevronLeft
           className={cn("w-4 h-4 transition-transform duration-300", sidebarCollapsed && "rotate-180")}
@@ -137,10 +164,10 @@ export function Sidebar() {
       </button>
 
       {/* User Profile Footer */}
-      <div className="border-t border-[#1b254b] p-3.5">
+      <div className="border-t border-slate-800/80 p-3">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#868CFF] to-[#4318FF] flex items-center justify-center shrink-0 shadow-md">
-            <User className="w-4 h-4 text-white" />
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shrink-0 shadow-md text-white text-xs font-bold">
+            {user?.name ? user.name.charAt(0).toUpperCase() : "U"}
           </div>
           <AnimatePresence>
             {!sidebarCollapsed && (
@@ -150,8 +177,8 @@ export function Sidebar() {
                 exit={{ opacity: 0, width: 0 }}
                 className="flex-1 overflow-hidden"
               >
-                <p className="text-xs font-bold text-white truncate">{user?.name || "Alex Mercer"}</p>
-                <p className="text-[10px] text-[#a3aed0] truncate">{user?.email || "alex@example.com"}</p>
+                <p className="text-xs font-bold text-white truncate">{user?.name || "Candidate"}</p>
+                <p className="text-[10px] text-slate-400 truncate">{user?.email || "candidate@example.com"}</p>
               </motion.div>
             )}
           </AnimatePresence>
@@ -162,7 +189,8 @@ export function Sidebar() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 onClick={logout}
-                className="p-2 rounded-xl text-[#a3aed0] hover:text-[#ee5d50] hover:bg-[#ee5d50]/10 transition-colors cursor-pointer"
+                className="p-1.5 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                title="Sign Out"
               >
                 <LogOut className="w-4 h-4" />
               </motion.button>

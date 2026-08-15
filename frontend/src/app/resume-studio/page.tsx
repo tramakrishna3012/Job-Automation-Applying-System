@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useRef } from "react";
 import { api, type UserProfile } from "@/lib/api";
@@ -8,6 +8,7 @@ import { useAppStore } from "@/lib/store";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
 import { cn } from "@/lib/utils";
 import {
   FileText,
@@ -17,8 +18,7 @@ import {
   RefreshCw,
   ChevronRight,
   UploadCloud,
-  CheckCircle,
-  Download,
+  CheckCircle2,
   Printer,
   Layers,
   Wand2,
@@ -26,13 +26,14 @@ import {
   X,
   User,
   Plus,
+  Cpu,
 } from "lucide-react";
 
 const TEMPLATES = [
   { id: "executive", name: "Executive Modern", description: "Deep navy accents with structured dividers" },
   { id: "harvard", name: "Classic Harvard", description: "Traditional serif typography with top rule header" },
   { id: "tech", name: "Tech / Modern", description: "Indigo pill badges & monospace metadata" },
-  { id: "minimal", name: "Clean ATS Minimal", description: "Clean grayscale optimized for automated ATS parsers" },
+  { id: "minimal", name: "Clean ATS Minimal", description: "Crisp grayscale optimized for automated ATS parsers" },
 ];
 
 export default function ResumeStudioPage() {
@@ -93,7 +94,7 @@ export default function ResumeStudioPage() {
     formData.append("template_style", selectedTemplate);
 
     try {
-      const res = await api.uploadResume(formData);
+      await api.uploadResume(formData);
       queryClient.invalidateQueries({ queryKey: ["resumePreview"] });
       queryClient.invalidateQueries({ queryKey: ["profile"] });
       setUploadModalOpen(false);
@@ -105,7 +106,7 @@ export default function ResumeStudioPage() {
     }
   };
 
-  // Live Tailor Mutation
+  // Live Tailor Action
   const handleTailor = async () => {
     setIsTailoring(true);
     try {
@@ -136,41 +137,41 @@ export default function ResumeStudioPage() {
 
   // Skill analysis
   const profileSkills = resumeData?.profile?.skills || ["Python", "FastAPI", "React", "PostgreSQL", "Docker"];
-  const matchedSkills = tailoredResult?.matched_keywords?.length
+  const matchedSkills: string[] = tailoredResult?.matched_keywords?.length
     ? tailoredResult.matched_keywords
-    : profileSkills.filter((s) => activeDescription.toLowerCase().includes(s.toLowerCase()));
-  const missingSkills = tailoredResult?.missing_keywords?.length
+    : profileSkills.filter((s: string) => activeDescription.toLowerCase().includes(s.toLowerCase()));
+  const missingSkills: string[] = tailoredResult?.missing_keywords?.length
     ? tailoredResult.missing_keywords
-    : ["Kubernetes", "AWS", "CI/CD"].filter((s) => activeDescription.toLowerCase().includes(s.toLowerCase()) && !profileSkills.some(ps => ps.toLowerCase() === s.toLowerCase()));
+    : ["Kubernetes", "AWS", "CI/CD"].filter((s: string) => activeDescription.toLowerCase().includes(s.toLowerCase()) && !profileSkills.some((ps: string) => ps.toLowerCase() === s.toLowerCase()));
 
   const matchPercent = Math.min(100, Math.round(((matchedSkills.length + 1) / (matchedSkills.length + missingSkills.length + 1)) * 100));
 
   return (
     <div className="max-w-[1600px] mx-auto space-y-6">
       {/* Top Banner Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-6 rounded-[24px] bg-[#111c44] border border-[#1b254b] shadow-2xl">
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#868CFF] to-[#4318FF] flex items-center justify-center shadow-lg shadow-[#4318FF]/30 shrink-0">
-            <FileText className="w-7 h-7 text-white" />
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-6 sm:p-7 rounded-[24px] bg-slate-900/60 border border-slate-800/80 backdrop-blur-2xl shadow-2xl relative overflow-hidden">
+        <div className="flex items-center gap-4 relative z-10">
+          <div className="w-13 h-13 rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/25 shrink-0">
+            <FileText className="w-6 h-6 text-white" />
           </div>
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-bold text-white tracking-tight">AI Resume Architect</h1>
-              <Badge variant="success" className="text-[10px] bg-[#01b574]/20 text-[#01b574] border-[#01b574]/30">
-                Master Resume Active
+              <Badge variant="success" dot className="text-[10px]">
+                Master Active
               </Badge>
             </div>
-            <p className="text-xs text-[#a3aed0] mt-0.5">
-              Candidate: <span className="text-white font-bold">{resumeData?.profile?.name || user?.name || "T Rama Krishna"}</span> ({resumeData?.profile?.email || user?.email || "candidate@example.com"}) &bull; {profileSkills.length} Verified Skills
+            <p className="text-xs text-slate-400 mt-0.5">
+              Candidate: <span className="text-white font-bold">{resumeData?.profile?.name || user?.name || "Candidate"}</span> ({resumeData?.profile?.email || user?.email || "candidate@example.com"}) &bull; {profileSkills.length} Skills Extracted
             </p>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Upload Button */}
+        <div className="flex flex-wrap items-center gap-3 relative z-10">
+          {/* Upload Master Resume Button */}
           <button
             onClick={() => setUploadModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#868CFF] to-[#4318FF] text-white text-xs font-bold shadow-lg shadow-[#4318FF]/30 hover:shadow-[#4318FF]/50 transition-all cursor-pointer"
+            className="stellar-gradient-btn flex items-center gap-2 px-5 py-2.5 text-xs font-bold transition-all cursor-pointer shadow-lg shadow-indigo-500/20"
           >
             <UploadCloud className="w-4 h-4" />
             Upload Master Resume (PDF)
@@ -179,19 +180,19 @@ export default function ResumeStudioPage() {
           {/* Print / Save PDF Button */}
           <button
             onClick={handlePrint}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#1b254b] text-white text-xs font-bold border border-[#1b254b] hover:bg-[#243269] transition-all cursor-pointer"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-slate-800/80 hover:bg-slate-700 text-white text-xs font-semibold border border-slate-700/60 transition-all cursor-pointer shadow-sm"
           >
-            <Printer className="w-4 h-4 text-[#00f2fe]" />
+            <Printer className="w-4 h-4 text-cyan-400" />
             Print / Save PDF
           </button>
         </div>
       </div>
 
       {/* Template Switcher Bar */}
-      <div className="flex items-center justify-between flex-wrap gap-3 px-2">
+      <div className="flex items-center justify-between flex-wrap gap-3 px-1">
         <div className="flex items-center gap-2 overflow-x-auto pb-1">
-          <span className="text-xs font-bold text-[#a3aed0] uppercase tracking-wider mr-2 flex items-center gap-1.5 shrink-0">
-            <Layers className="w-3.5 h-3.5 text-[#7551ff]" /> Template:
+          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider mr-2 flex items-center gap-1.5 shrink-0">
+            <Layers className="w-3.5 h-3.5 text-indigo-400" /> Template:
           </span>
           {TEMPLATES.map((t) => (
             <button
@@ -201,10 +202,10 @@ export default function ResumeStudioPage() {
                 setViewMode("master");
               }}
               className={cn(
-                "px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer border",
+                "px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all shrink-0 cursor-pointer border",
                 selectedTemplate === t.id
-                  ? "bg-[#4318ff] text-white border-[#4318ff] shadow-md shadow-[#4318ff]/30"
-                  : "bg-[#111c44] text-[#a3aed0] border-[#1b254b] hover:text-white"
+                  ? "bg-indigo-600 text-white border-indigo-500 shadow-md shadow-indigo-500/25"
+                  : "bg-slate-900/60 text-slate-400 border-slate-800 hover:text-white"
               )}
             >
               {t.name}
@@ -212,13 +213,13 @@ export default function ResumeStudioPage() {
           ))}
         </div>
 
-        {/* View Mode Toggle */}
-        <div className="flex items-center bg-[#111c44] rounded-xl border border-[#1b254b] p-1">
+        {/* View Mode Toggle Pill */}
+        <div className="flex items-center bg-slate-900/80 rounded-full border border-slate-800 p-1">
           <button
             onClick={() => setViewMode("master")}
             className={cn(
-              "px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer",
-              viewMode === "master" ? "bg-[#1b254b] text-white" : "text-[#a3aed0] hover:text-white"
+              "px-3.5 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer",
+              viewMode === "master" ? "bg-slate-800 text-white" : "text-slate-400 hover:text-white"
             )}
           >
             Master Resume
@@ -226,8 +227,8 @@ export default function ResumeStudioPage() {
           <button
             onClick={() => setViewMode("tailored")}
             className={cn(
-              "px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1",
-              viewMode === "tailored" ? "bg-[#01b574] text-white shadow-md" : "text-[#a3aed0] hover:text-white"
+              "px-3.5 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5",
+              viewMode === "tailored" ? "bg-emerald-600 text-white shadow-md" : "text-slate-400 hover:text-white"
             )}
           >
             <Sparkles className="w-3 h-3" />
@@ -240,28 +241,28 @@ export default function ResumeStudioPage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Column (5 cols): Job Targeting & Keyword Analysis */}
         <div className="lg:col-span-5 space-y-5">
-          <Card className="rounded-[20px] bg-[#111c44] border-[#1b254b]">
+          <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-bold text-white flex items-center gap-2">
-                  <Briefcase className="w-4 h-4 text-[#7551ff]" />
-                  Target Job Description
+                  <Briefcase className="w-4 h-4 text-indigo-400" />
+                  Target Position & Description
                 </CardTitle>
-                <div className="flex bg-[#0b1437] rounded-lg p-0.5 border border-[#1b254b]">
+                <div className="flex bg-slate-950/80 rounded-lg p-0.5 border border-slate-800">
                   <button
                     onClick={() => setActiveTab("pipeline")}
                     className={cn(
                       "px-2.5 py-1 rounded text-[10px] font-bold transition-all",
-                      activeTab === "pipeline" ? "bg-[#4318ff] text-white" : "text-[#a3aed0]"
+                      activeTab === "pipeline" ? "bg-indigo-600 text-white" : "text-slate-400"
                     )}
                   >
-                    From Queue
+                    From Pipeline
                   </button>
                   <button
                     onClick={() => setActiveTab("custom")}
                     className={cn(
                       "px-2.5 py-1 rounded text-[10px] font-bold transition-all",
-                      activeTab === "custom" ? "bg-[#4318ff] text-white" : "text-[#a3aed0]"
+                      activeTab === "custom" ? "bg-indigo-600 text-white" : "text-slate-400"
                     )}
                   >
                     Custom JD
@@ -272,12 +273,12 @@ export default function ResumeStudioPage() {
             <CardContent className="space-y-4">
               {activeTab === "pipeline" ? (
                 <div>
-                  <label className="text-[11px] font-bold text-[#a3aed0] uppercase tracking-wider mb-2 block">
-                    Select Application from Queue
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 block">
+                    Choose Queued Application
                   </label>
                   <div className="flex gap-2 overflow-x-auto pb-2 mb-3">
                     {appsLoading ? (
-                      [...Array(3)].map((_, i) => <Skeleton key={i} className="h-9 w-32 rounded-xl shrink-0 bg-[#1b254b]" />)
+                      [...Array(3)].map((_, i) => <Skeleton key={i} className="h-8 w-28 rounded-xl shrink-0 bg-slate-800" />)
                     ) : applications?.length ? (
                       applications.slice(0, 8).map((app) => (
                         <button
@@ -286,22 +287,22 @@ export default function ResumeStudioPage() {
                           className={cn(
                             "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0 cursor-pointer border transition-all",
                             (selectedAppId === app.id || (!selectedAppId && selectedApp?.id === app.id))
-                              ? "bg-[#4318ff]/20 text-white border-[#7551ff]"
-                              : "bg-[#0b1437] text-[#a3aed0] border-[#1b254b] hover:text-white"
+                              ? "bg-indigo-500/20 text-white border-indigo-500/50"
+                              : "bg-slate-950/60 text-slate-400 border-slate-800 hover:text-white"
                           )}
                         >
                           <span className="truncate max-w-[120px]">{app.company}</span>
                         </button>
                       ))
                     ) : (
-                      <span className="text-xs text-[#a3aed0]">No applications yet</span>
+                      <span className="text-xs text-slate-500">No applications in pipeline</span>
                     )}
                   </div>
 
-                  <div className="p-3.5 rounded-xl bg-[#0b1437] border border-[#1b254b]">
+                  <div className="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800">
                     <div className="text-xs font-bold text-white">{activeTitle}</div>
-                    <div className="text-[11px] text-[#7551ff] font-semibold mb-2">{activeCompany}</div>
-                    <p className="text-xs text-[#a3aed0] leading-relaxed line-clamp-4">
+                    <div className="text-[11px] text-indigo-400 font-semibold mb-2">{activeCompany}</div>
+                    <p className="text-xs text-slate-400 leading-relaxed line-clamp-4">
                       {activeDescription}
                     </p>
                   </div>
@@ -314,34 +315,34 @@ export default function ResumeStudioPage() {
                       placeholder="Role (e.g. Senior AI Engineer)"
                       value={customJobTitle}
                       onChange={(e) => setCustomJobTitle(e.target.value)}
-                      className="bg-[#0b1437] border border-[#1b254b] rounded-xl px-3 py-2 text-xs text-white placeholder-[#707eae] focus:outline-none focus:border-[#7551ff]"
+                      className="bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500/50"
                     />
                     <input
                       type="text"
                       placeholder="Company Name"
                       value={customCompany}
                       onChange={(e) => setCustomCompany(e.target.value)}
-                      className="bg-[#0b1437] border border-[#1b254b] rounded-xl px-3 py-2 text-xs text-white placeholder-[#707eae] focus:outline-none focus:border-[#7551ff]"
+                      className="bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500/50"
                     />
                   </div>
                   <textarea
                     rows={4}
-                    placeholder="Paste the full Job Description here..."
+                    placeholder="Paste target job description here..."
                     value={customDescription}
                     onChange={(e) => setCustomDescription(e.target.value)}
-                    className="w-full bg-[#0b1437] border border-[#1b254b] rounded-xl p-3 text-xs text-white placeholder-[#707eae] focus:outline-none focus:border-[#7551ff]"
+                    className="w-full bg-slate-950/80 border border-slate-800 rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500/50"
                   />
                 </div>
               )}
 
               {/* Real-time Keyword & Match Coverage Analysis */}
-              <div className="pt-2 border-t border-[#1b254b]">
+              <div className="pt-2 border-t border-slate-800">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-[#ffb547]" />
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
                     AI Skill Match Analysis
                   </span>
-                  <Badge className="bg-[#01b574]/20 text-[#01b574] border-[#01b574]/30 font-bold text-[10px]">
+                  <Badge variant="success" className="font-bold text-[10px]">
                     {matchPercent}% Match
                   </Badge>
                 </div>
@@ -350,7 +351,7 @@ export default function ResumeStudioPage() {
                   {matchedSkills.map((s: string) => (
                     <span
                       key={s}
-                      className="px-2 py-0.5 rounded-md bg-[#01b574]/15 border border-[#01b574]/30 text-[#01b574] text-[10px] font-semibold flex items-center gap-1"
+                      className="px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-[10px] font-semibold flex items-center gap-1"
                     >
                       ✓ {s}
                     </span>
@@ -358,7 +359,7 @@ export default function ResumeStudioPage() {
                   {missingSkills.map((s: string) => (
                     <span
                       key={s}
-                      className="px-2 py-0.5 rounded-md bg-[#ee5d50]/15 border border-[#ee5d50]/30 text-[#ee5d50] text-[10px] font-semibold flex items-center gap-1"
+                      className="px-2 py-0.5 rounded-md bg-rose-500/10 border border-rose-500/25 text-rose-400 text-[10px] font-semibold flex items-center gap-1"
                     >
                       + {s}
                     </span>
@@ -369,7 +370,7 @@ export default function ResumeStudioPage() {
                 <button
                   onClick={handleTailor}
                   disabled={isTailoring}
-                  className="w-full py-3 rounded-xl bg-gradient-to-r from-[#868CFF] to-[#4318FF] text-white text-xs font-bold uppercase tracking-wider shadow-lg shadow-[#4318FF]/30 hover:shadow-[#4318FF]/50 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                  className="stellar-gradient-btn w-full py-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                 >
                   {isTailoring ? (
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -387,21 +388,21 @@ export default function ResumeStudioPage() {
 
         {/* Right Column (7 cols): High-Fidelity Paper Resume Preview */}
         <div className="lg:col-span-7">
-          <Card className="rounded-[20px] bg-[#111c44] border-[#1b254b] overflow-hidden">
+          <Card className="overflow-hidden">
             <CardHeader className="pb-3 flex-row items-center justify-between space-y-0">
               <CardTitle className="text-sm font-bold text-white flex items-center gap-2">
-                <Eye className="w-4 h-4 text-[#00f2fe]" />
-                Live Document Preview ({viewMode === "tailored" ? "Tailored" : "Master"})
+                <Eye className="w-4 h-4 text-cyan-400" />
+                Document Preview ({viewMode === "tailored" ? "Tailored" : "Master"})
               </CardTitle>
-              <div className="text-[11px] text-[#a3aed0] font-mono">
-                Theme: <span className="text-[#00f2fe] uppercase">{selectedTemplate}</span>
+              <div className="text-[11px] text-slate-400 font-mono">
+                Theme: <span className="text-cyan-400 uppercase font-bold">{selectedTemplate}</span>
               </div>
             </CardHeader>
-            <CardContent className="p-4 sm:p-6 bg-[#0b1437]/50">
+            <CardContent className="p-4 sm:p-6 bg-slate-950/60">
               {resumeLoading ? (
                 <div className="flex flex-col items-center justify-center min-h-[600px] gap-3">
-                  <div className="w-8 h-8 border-2 border-[#7551ff] border-t-transparent rounded-full animate-spin" />
-                  <p className="text-xs text-[#a3aed0]">Rendering resume architect preview...</p>
+                  <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                  <p className="text-xs text-slate-400">Compiling resume architect document...</p>
                 </div>
               ) : (
                 <div className="rounded-xl shadow-2xl bg-white overflow-hidden border border-slate-300 min-h-[650px] relative">
@@ -421,46 +422,46 @@ export default function ResumeStudioPage() {
       {/* Upload Master Resume Modal */}
       <AnimatePresence>
         {uploadModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="w-full max-w-lg rounded-[24px] bg-[#111c44] border border-[#1b254b] p-6 shadow-2xl space-y-5"
+              className="w-full max-w-lg rounded-[24px] bg-slate-900 border border-slate-800 p-6 sm:p-7 shadow-2xl space-y-5"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#868CFF] to-[#4318FF] flex items-center justify-center text-white shadow-md">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-md">
                     <UploadCloud className="w-5 h-5" />
                   </div>
                   <div>
                     <h3 className="text-base font-bold text-white">Upload Master Resume</h3>
-                    <p className="text-xs text-[#a3aed0]">Extract candidate profile & match resume format</p>
+                    <p className="text-xs text-slate-400">Parse candidate facts & match resume format</p>
                   </div>
                 </div>
                 <button
                   onClick={() => setUploadModalOpen(false)}
-                  className="p-1.5 rounded-lg text-[#a3aed0] hover:text-white hover:bg-[#1b254b] cursor-pointer"
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
               {uploadError && (
-                <div className="p-3 rounded-xl bg-[#ee5d50]/15 border border-[#ee5d50]/30 text-[#ee5d50] text-xs flex items-center gap-2">
+                <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/25 text-rose-400 text-xs flex items-center gap-2">
                   <AlertCircle className="w-4 h-4 shrink-0" />
                   <span>{uploadError}</span>
                 </div>
               )}
 
-              <div className="border-2 border-dashed border-[#1b254b] rounded-2xl p-8 flex flex-col items-center justify-center hover:border-[#7551ff]/50 transition-all relative cursor-pointer bg-[#0b1437]">
-                <UploadCloud className="w-10 h-10 text-[#7551ff] mb-2" />
+              <div className="border-2 border-dashed border-slate-800 rounded-2xl p-8 flex flex-col items-center justify-center hover:border-indigo-500/50 transition-all relative cursor-pointer bg-slate-950/60">
+                <UploadCloud className="w-10 h-10 text-indigo-400 mb-2" />
                 <p className="text-xs font-bold text-white text-center">
                   {uploadFile ? uploadFile.name : "Click to select PDF or drag and drop"}
                 </p>
-                <p className="text-[10px] text-[#a3aed0] mt-1">Accepts standard PDF master resume</p>
+                <p className="text-[10px] text-slate-400 mt-1">Accepts standard PDF master resume</p>
                 {uploadFile && (
-                  <Badge className="mt-3 bg-[#01b574]/20 text-[#01b574] border-[#01b574]/30 text-[10px]">
+                  <Badge variant="success" className="mt-3 text-[10px]">
                     ✓ PDF Selected ({(uploadFile.size / 1024).toFixed(1)} KB)
                   </Badge>
                 )}
@@ -475,14 +476,14 @@ export default function ResumeStudioPage() {
               <div className="flex gap-3">
                 <button
                   onClick={() => setUploadModalOpen(false)}
-                  className="flex-1 py-2.5 rounded-xl border border-[#1b254b] text-[#a3aed0] hover:text-white text-xs font-bold transition-all cursor-pointer"
+                  className="flex-1 py-2.5 rounded-full border border-slate-800 text-slate-400 hover:text-white text-xs font-bold transition-all cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleUploadResume}
                   disabled={uploadLoading || !uploadFile}
-                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-[#868CFF] to-[#4318FF] text-white text-xs font-bold shadow-lg shadow-[#4318FF]/30 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
+                  className="stellar-gradient-btn flex-1 py-2.5 text-xs font-bold disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
                 >
                   {uploadLoading ? (
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />

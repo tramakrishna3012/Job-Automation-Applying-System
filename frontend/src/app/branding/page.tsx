@@ -1,12 +1,15 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 import { api } from "@/lib/api";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAppStore } from "@/lib/store";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { StatCard } from "@/components/ui/stat-card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   Dialog,
   DialogContent,
@@ -25,20 +28,24 @@ import {
   Plus,
   Loader2,
   MessageSquare,
-  Heart,
   Repeat2,
   Send,
   ThumbsUp,
+  Copy,
+  Check,
+  Zap,
 } from "lucide-react";
 
-// Icon aliases for platform branding
+// Platform Icon aliases
 const LinkedinIcon = Globe;
 const GithubIcon = Code2;
 
 export default function BrandingPage() {
   const queryClient = useQueryClient();
+  const { user } = useAppStore();
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewContent, setPreviewContent] = useState("");
+  const [copied, setCopied] = useState(false);
 
   const { data: logs, isLoading } = useQuery({
     queryKey: ["logs"],
@@ -47,8 +54,12 @@ export default function BrandingPage() {
 
   const generateMutation = useMutation({
     mutationFn: () => api.generateBrandingPost("linkedin"),
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["logs"] });
+      if (data?.post_content) {
+        setPreviewContent(data.post_content);
+        setPreviewOpen(true);
+      }
     },
   });
 
@@ -64,198 +75,206 @@ export default function BrandingPage() {
   const openPreview = (content: string) => {
     setPreviewContent(content);
     setPreviewOpen(true);
+    setCopied(false);
+  };
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(previewContent);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+      {/* Top Banner Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 sm:p-7 rounded-[24px] bg-slate-900/60 border border-slate-800/80 backdrop-blur-2xl shadow-2xl">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Social Branding Hub</h1>
-          <p className="text-sm text-slate-500 mt-0.5">
-            AI-generated LinkedIn posts and GitHub streak management
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-xs font-semibold mb-2">
+            <Sparkles className="w-3.5 h-3.5" />
+            AI Visibility & Personal Branding
+          </div>
+          <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
+            Social Branding & Growth Studio
+          </h1>
+          <p className="text-xs text-slate-400 mt-1">
+            Automated LinkedIn technical thought leadership posts and GitHub activity streak management
           </p>
         </div>
+
         <button
           onClick={() => generateMutation.mutate()}
           disabled={generateMutation.isPending}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-semibold text-sm shadow-lg shadow-sky-500/20 disabled:opacity-50 cursor-pointer"
+          className="stellar-gradient-btn flex items-center gap-2 px-5 py-2.5 text-xs font-bold transition-all cursor-pointer shrink-0 disabled:opacity-50 shadow-lg shadow-indigo-500/20"
         >
           {generateMutation.isPending ? (
             <Loader2 className="w-4 h-4 animate-spin" />
           ) : (
             <Plus className="w-4 h-4" />
           )}
-          Generate Post
+          {generateMutation.isPending ? "Generating..." : "Generate AI Post"}
         </button>
       </div>
 
-      {/* Stats Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center">
-              <LinkedinIcon className="w-5 h-5 text-sky-400" />
-            </div>
-            <div>
-              <div className="text-xl font-bold text-white">{brandingLogs.filter((l) => l.message.toLowerCase().includes("linkedin")).length}</div>
-              <div className="text-[10px] text-slate-500">LinkedIn Posts</div>
-            </div>
-          </div>
-        </Card>
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
-              <GithubIcon className="w-5 h-5 text-purple-400" />
-            </div>
-            <div>
-              <div className="text-xl font-bold text-white">{brandingLogs.filter((l) => l.message.toLowerCase().includes("github")).length}</div>
-              <div className="text-[10px] text-slate-500">GitHub Entries</div>
-            </div>
-          </div>
-        </Card>
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-              <Calendar className="w-5 h-5 text-emerald-400" />
-            </div>
-            <div>
-              <div className="text-xl font-bold text-white">{brandingLogs.length}</div>
-              <div className="text-[10px] text-slate-500">Total Activities</div>
-            </div>
-          </div>
-        </Card>
+      {/* 3 KPI Stat Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+        <StatCard
+          icon={LinkedinIcon}
+          label="LinkedIn Posts"
+          value={brandingLogs.filter((l) => l.message.toLowerCase().includes("linkedin")).length}
+          iconColor="text-sky-400"
+          iconBg="bg-sky-500/10 border-sky-500/20"
+          change="AI Drafted"
+          delay={0}
+        />
+        <StatCard
+          icon={GithubIcon}
+          label="GitHub Streak Entries"
+          value={brandingLogs.filter((l) => l.message.toLowerCase().includes("github")).length}
+          iconColor="text-purple-400"
+          iconBg="bg-purple-500/10 border-purple-500/20"
+          change="Daily Pulse"
+          delay={0.08}
+        />
+        <StatCard
+          icon={Calendar}
+          label="Total Activity Logs"
+          value={brandingLogs.length}
+          iconColor="text-emerald-400"
+          iconBg="bg-emerald-500/10 border-emerald-500/20"
+          change="Visibility Agent"
+          delay={0.16}
+        />
       </div>
 
-      {/* Timeline */}
+      {/* Activity Timeline */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
+          <CardTitle className="text-base font-bold text-white flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-purple-400" />
             Branding Activity Timeline
           </CardTitle>
+          <CardDescription>Generated technical articles, engineering milestones, and social broadcasts</CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <div className="space-y-4">
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className="flex gap-4">
-                  <Skeleton className="w-10 h-10 rounded-xl shrink-0" />
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="flex gap-4 p-3 rounded-xl bg-slate-950/40">
+                  <Skeleton className="w-10 h-10 rounded-xl bg-slate-800 shrink-0" />
                   <div className="flex-1 space-y-2">
-                    <Skeleton className="h-4 w-[60%]" />
-                    <Skeleton className="h-3 w-full" />
+                    <Skeleton className="h-4 w-1/3 bg-slate-800" />
+                    <Skeleton className="h-3 w-full bg-slate-800" />
                   </div>
                 </div>
               ))}
             </div>
           ) : !brandingLogs.length ? (
-            <div className="text-center py-12 text-slate-600 text-sm">
-              <Share2 className="w-10 h-10 mx-auto mb-2 stroke-[1.5]" />
-              <p>No branding activities yet</p>
-              <p className="text-xs mt-1">Click "Generate Post" or run a test to create AI-generated content</p>
-            </div>
+            <EmptyState
+              icon={Share2}
+              title="No branding activities recorded"
+              description="Click 'Generate AI Post' above to create an automated technical LinkedIn post based on your candidate profile."
+            />
           ) : (
-            <div className="relative">
-              {/* Timeline line */}
-              <div className="absolute left-5 top-0 bottom-0 w-px bg-white/[0.06]" />
-
-              <div className="space-y-4">
-                {brandingLogs.map((log, idx) => {
-                  const isLinkedIn = log.message.toLowerCase().includes("linkedin");
-                  return (
-                    <motion.div
-                      key={idx}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ duration: 0.3, delay: idx * 0.05 }}
-                      className="flex gap-4 relative"
+            <div className="space-y-3">
+              {brandingLogs.map((log, idx) => {
+                const isLinkedIn = log.message.toLowerCase().includes("linkedin");
+                return (
+                  <motion.div
+                    key={idx}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.25, delay: idx * 0.04 }}
+                    className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800/80 hover:border-slate-700/80 transition-all flex items-start gap-4"
+                  >
+                    <div
+                      className={cn(
+                        "w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 shadow-sm",
+                        isLinkedIn
+                          ? "bg-sky-500/10 border-sky-500/25 text-sky-400"
+                          : "bg-purple-500/10 border-purple-500/25 text-purple-400"
+                      )}
                     >
-                      <div
-                        className={cn(
-                          "w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 z-10",
-                          isLinkedIn
-                            ? "bg-sky-500/10 border-sky-500/20"
-                            : "bg-purple-500/10 border-purple-500/20"
-                        )}
-                      >
-                        {isLinkedIn ? (
-                          <LinkedinIcon className="w-4 h-4 text-sky-400" />
-                        ) : (
-                          <GithubIcon className="w-4 h-4 text-purple-400" />
-                        )}
-                      </div>
+                      {isLinkedIn ? <LinkedinIcon className="w-4 h-4" /> : <GithubIcon className="w-4 h-4" />}
+                    </div>
 
-                      <div className="flex-1 p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] hover:border-white/[0.1] transition-colors">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <Badge variant={isLinkedIn ? "default" : "purple"} className="text-[9px]">
-                                {isLinkedIn ? "LinkedIn" : "GitHub"}
-                              </Badge>
-                              <span className="text-[10px] text-slate-600 font-mono">{formatDate(log.time)} {formatTime(log.time)}</span>
-                            </div>
-                            <p className="text-xs text-slate-300">{log.message}</p>
-                          </div>
-                          <button
-                            onClick={() => openPreview(log.message)}
-                            className="p-1.5 rounded-lg text-slate-500 hover:text-sky-400 hover:bg-sky-500/10 transition-colors cursor-pointer shrink-0"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <Badge variant={isLinkedIn ? "default" : "purple"} className="text-[9px]">
+                          {isLinkedIn ? "LinkedIn Post" : "GitHub Streak"}
+                        </Badge>
+                        <span className="text-[10px] text-slate-500 font-mono">
+                          {formatDate(log.time)} {formatTime(log.time)}
+                        </span>
                       </div>
-                    </motion.div>
-                  );
-                })}
-              </div>
+                      <p className="text-xs text-slate-300 leading-relaxed line-clamp-3">{log.message}</p>
+                    </div>
+
+                    <button
+                      onClick={() => openPreview(log.message)}
+                      className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
+                      title="View Post Mockup"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </button>
+                  </motion.div>
+                );
+              })}
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* LinkedIn Preview Modal */}
+      {/* LinkedIn Post Mockup Modal */}
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-xl bg-slate-900 border border-slate-800 text-white rounded-[24px] p-6 sm:p-7">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <LinkedinIcon className="w-4 h-4 text-sky-400" />
-              LinkedIn Feed Preview
-            </DialogTitle>
-            <DialogDescription>How this post will appear on your LinkedIn feed</DialogDescription>
+            <div className="flex items-center justify-between">
+              <DialogTitle className="text-base font-bold text-white flex items-center gap-2">
+                <LinkedinIcon className="w-4 h-4 text-sky-400" />
+                LinkedIn Feed Preview
+              </DialogTitle>
+              <button
+                onClick={handleCopy}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-800 text-xs font-semibold text-slate-300 hover:text-white transition-colors cursor-pointer border border-slate-700/60"
+              >
+                {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                <span>{copied ? "Copied!" : "Copy Post"}</span>
+              </button>
+            </div>
           </DialogHeader>
 
-          {/* Mock LinkedIn Card */}
-          <div className="linkedin-card p-4 mt-2">
-            {/* User Info */}
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-sky-500 to-indigo-600 flex items-center justify-center">
-                <span className="text-white text-xs font-bold">AM</span>
+          {/* High-Fidelity LinkedIn Card Mockup */}
+          <div className="p-5 rounded-2xl bg-slate-950/90 border border-slate-800 mt-2 space-y-4">
+            {/* User Info Header */}
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-full bg-gradient-to-br from-sky-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold shadow-md">
+                {user?.name ? user.name.charAt(0).toUpperCase() : "U"}
               </div>
               <div>
-                <p className="text-sm font-semibold text-white">Alex Mercer</p>
-                <p className="text-[10px] text-slate-500">Senior Full-Stack AI Engineer | 1st</p>
-                <p className="text-[10px] text-slate-600">Just now • <span className="text-slate-500">🌐</span></p>
+                <p className="text-sm font-bold text-white leading-none">{user?.name || "Senior Full-Stack AI Engineer"}</p>
+                <p className="text-[11px] text-slate-400 mt-1">Autonomous AI & Systems Architect &bull; 1st</p>
+                <p className="text-[10px] text-slate-500 font-mono mt-0.5">Just now &bull; 🌐</p>
               </div>
             </div>
 
-            {/* Post Content */}
-            <div className="text-sm text-slate-300 leading-relaxed mb-4 whitespace-pre-wrap">
-              {previewContent || "Preview content will appear here..."}
+            {/* Post Body Content */}
+            <div className="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap max-h-72 overflow-y-auto">
+              {previewContent || "Post content will appear here..."}
             </div>
 
-            {/* Engagement Bar */}
-            <div className="border-t border-white/[0.06] pt-2 flex items-center justify-between text-slate-500">
-              <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-white/[0.04] text-xs transition-colors cursor-pointer">
-                <ThumbsUp className="w-4 h-4" /> Like
+            {/* Engagement Action Bar */}
+            <div className="border-t border-slate-800 pt-3 flex items-center justify-between text-slate-400 text-xs">
+              <button className="flex items-center gap-1.5 hover:text-white transition-colors cursor-pointer">
+                <ThumbsUp className="w-3.5 h-3.5" /> Like
               </button>
-              <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-white/[0.04] text-xs transition-colors cursor-pointer">
-                <MessageSquare className="w-4 h-4" /> Comment
+              <button className="flex items-center gap-1.5 hover:text-white transition-colors cursor-pointer">
+                <MessageSquare className="w-3.5 h-3.5" /> Comment
               </button>
-              <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-white/[0.04] text-xs transition-colors cursor-pointer">
-                <Repeat2 className="w-4 h-4" /> Repost
+              <button className="flex items-center gap-1.5 hover:text-white transition-colors cursor-pointer">
+                <Repeat2 className="w-3.5 h-3.5" /> Repost
               </button>
-              <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-white/[0.04] text-xs transition-colors cursor-pointer">
-                <Send className="w-4 h-4" /> Send
+              <button className="flex items-center gap-1.5 hover:text-white transition-colors cursor-pointer">
+                <Send className="w-3.5 h-3.5" /> Send
               </button>
             </div>
           </div>

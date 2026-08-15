@@ -1,45 +1,47 @@
 @import "tailwindcss";
 
-/* ── Horizon UI Design System Tokens ─────────────────── */
+/* ── Stellar Design System Tokens ───────────────────────── */
 :root, html.dark {
-  --background: #0b1437; /* Horizon Navy 900 */
-  --foreground: #ffffff;
-  --card: #111c44;       /* Horizon Navy 800 Card */
-  --card-border: #1b254b;/* Horizon Navy 700 Border */
-  --muted: #1b254b;
-  --text-primary: #ffffff;
-  --text-secondary: #a3aed0; /* Horizon Secondary Text */
-  --text-muted: #707eae;     /* Horizon Muted Text */
-  --input-bg: #0b1437;
-  --brand-500: #4318ff;     /* Horizon Brand Indigo */
-  --brand-400: #7551ff;     /* Horizon Brand Light Indigo */
-  --brand-linear: linear-gradient(135deg, #868CFF 0%, #4318FF 100%);
-  --accent-sky: #00f2fe;
-  --accent-emerald: #01b574; /* Horizon Green */
-  --accent-purple: #7551ff;
-  --accent-amber: #ffb547;  /* Horizon Yellow */
-  --accent-red: #ee5d50;    /* Horizon Red */
+  --background: #080c14;      /* Stellar Deep Void */
+  --foreground: #f8fafc;      /* Slate 50 */
+  --card: #0f172a;            /* Slate 900 Glass */
+  --card-surface: rgba(15, 23, 42, 0.75);
+  --card-border: rgba(255, 255, 255, 0.08);
+  --card-hover-border: rgba(99, 102, 241, 0.35);
+  --muted: #1e293b;           /* Slate 800 */
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;  /* Slate 400 */
+  --text-muted: #64748b;      /* Slate 500 */
+  --input-bg: rgba(8, 12, 20, 0.85);
+  --brand-primary: #6366f1;   /* Stellar Indigo 500 */
+  --brand-violet: #8b5cf6;    /* Violet 500 */
+  --brand-purple: #a855f7;    /* Purple 500 */
+  --accent-cyan: #06b6d4;     /* Cyan 500 */
+  --accent-emerald: #10b981;  /* Emerald 500 */
+  --accent-amber: #f59e0b;    /* Amber 500 */
+  --accent-rose: #f43f5e;     /* Rose 500 */
   color-scheme: dark;
 }
 
 html.light {
-  --background: #f4f7fe; /* Horizon Soft Gray-Blue 50 */
-  --foreground: #2b3674; /* Horizon Navy Dark Text */
-  --card: #ffffff;       /* Pure White Card */
-  --card-border: #e2e8f0;/* Slate 200 Border */
-  --muted: #f4f7fe;
-  --text-primary: #2b3674;
-  --text-secondary: #707eae; /* Secondary Slate */
-  --text-muted: #a3aed0;
-  --input-bg: #f4f7fe;
-  --brand-500: #4318ff;
-  --brand-400: #7551ff;
-  --brand-linear: linear-gradient(135deg, #868CFF 0%, #4318FF 100%);
-  --accent-sky: #0284c7;
-  --accent-emerald: #01b574;
-  --accent-purple: #7551ff;
-  --accent-amber: #f59e0b;
-  --accent-red: #ee5d50;
+  --background: #f8fafc;      /* Slate 50 */
+  --foreground: #0f172a;      /* Slate 900 */
+  --card: #ffffff;            /* Pure White */
+  --card-surface: rgba(255, 255, 255, 0.9);
+  --card-border: #e2e8f0;     /* Slate 200 */
+  --card-hover-border: rgba(99, 102, 241, 0.4);
+  --muted: #f1f5f9;
+  --text-primary: #0f172a;
+  --text-secondary: #64748b;  /* Slate 500 */
+  --text-muted: #94a3b8;      /* Slate 400 */
+  --input-bg: #f8fafc;
+  --brand-primary: #4f46e5;
+  --brand-violet: #7c3aed;
+  --brand-purple: #9333ea;
+  --accent-cyan: #0284c7;
+  --accent-emerald: #059669;
+  --accent-amber: #d97706;
+  --accent-rose: #e11d48;
   color-scheme: light;
 }
 
@@ -50,10 +52,10 @@ html.light {
   --font-mono: var(--font-geist-mono);
 }
 
-/* ── Base Styles ──────────────────────────────────────── */
+/* ── Base Styles ────────────────────────────────────────── */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(163, 174, 208, 0.2) transparent;
+  scrollbar-color: rgba(148, 163, 184, 0.2) transparent;
 }
 
 *::-webkit-scrollbar {
@@ -66,12 +68,12 @@ html.light {
 }
 
 *::-webkit-scrollbar-thumb {
-  background: rgba(163, 174, 208, 0.2);
+  background: rgba(148, 163, 184, 0.2);
   border-radius: 999px;
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background: rgba(163, 174, 208, 0.4);
+  background: rgba(148, 163, 184, 0.4);
 }
 
 body {
@@ -84,92 +86,116 @@ body {
   transition: background-color 0.25s ease, color 0.25s ease;
 }
 
-/* ── Selection ────────────────────────────────────────── */
+/* ── Stellar Cosmic Grid Background ─────────────────────── */
+.stellar-grid-bg {
+  background-image: 
+    radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.12) 0%, transparent 60%),
+    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 100% 100%, 32px 32px, 32px 32px;
+}
+
+/* ── Selection ──────────────────────────────────────────── */
 ::selection {
-  background: rgba(67, 24, 255, 0.4);
+  background: rgba(99, 102, 241, 0.35);
   color: #ffffff;
 }
 
-/* ── Horizon UI Card Component ────────────────────────── */
-.horizon-card {
-  background-color: #111c44;
-  border: 1px solid #1b254b;
-  border-radius: 20px;
-  box-shadow: 0px 18px 40px rgba(11, 20, 55, 0.5);
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+/* ── Stellar Glass Card Component ───────────────────────── */
+.stellar-card {
+  background-color: var(--card-surface);
+  border: 1px solid var(--card-border);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 18px;
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
 }
 
-.horizon-card:hover {
-  border-color: rgba(117, 81, 255, 0.3);
+.stellar-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.1), transparent 60%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.stellar-card:hover {
+  border-color: var(--card-hover-border);
   transform: translateY(-2px);
+  box-shadow: 0 24px 48px -12px rgba(99, 102, 241, 0.15);
 }
 
-/* ── Horizon Glass Card ───────────────────────────────── */
-.glass-card {
-  background: rgba(17, 28, 68, 0.85);
-  border: 1px solid rgba(27, 37, 75, 0.8);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-radius: 20px;
-}
-
-/* ── Horizon Gradient Button ──────────────────────────── */
-.horizon-gradient-btn {
-  background: linear-gradient(135deg, #868CFF 0%, #4318FF 100%);
+/* ── Stellar Gradient Button ────────────────────────────── */
+.stellar-gradient-btn {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #4f46e5 100%);
   color: #ffffff;
-  border-radius: 14px;
+  border-radius: 9999px;
   font-weight: 600;
-  box-shadow: 0px 10px 24px rgba(67, 24, 255, 0.3);
+  box-shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.4);
   transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
 }
 
-.horizon-gradient-btn:hover {
-  box-shadow: 0px 14px 28px rgba(67, 24, 255, 0.45);
+.stellar-gradient-btn::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: 0.5s;
+}
+
+.stellar-gradient-btn:hover::before {
+  left: 100%;
+}
+
+.stellar-gradient-btn:hover {
+  box-shadow: 0 14px 30px -4px rgba(99, 102, 241, 0.6);
   transform: translateY(-1px);
 }
 
-/* ── Horizon Icon Container ───────────────────────────── */
-.horizon-icon-box {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: #1b254b;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* ── Stellar Glowing Elements ───────────────────────────── */
+.glow-indigo {
+  box-shadow: 0 0 24px -4px rgba(99, 102, 241, 0.35);
 }
 
-/* ── Stat Glow Rings ──────────────────────────────────── */
-.stat-glow-sky {
-  box-shadow: 0 0 0 1px rgba(0, 242, 254, 0.2), 0 8px 32px -8px rgba(0, 242, 254, 0.15);
+.glow-emerald {
+  box-shadow: 0 0 24px -4px rgba(16, 185, 129, 0.35);
 }
 
-.stat-glow-emerald {
-  box-shadow: 0 0 0 1px rgba(1, 181, 116, 0.2), 0 8px 32px -8px rgba(1, 181, 116, 0.15);
+.glow-cyan {
+  box-shadow: 0 0 24px -4px rgba(6, 182, 212, 0.35);
 }
 
-.stat-glow-purple {
-  box-shadow: 0 0 0 1px rgba(117, 81, 255, 0.2), 0 8px 32px -8px rgba(117, 81, 255, 0.15);
+.glow-purple {
+  box-shadow: 0 0 24px -4px rgba(168, 85, 247, 0.35);
 }
 
-.stat-glow-amber {
-  box-shadow: 0 0 0 1px rgba(255, 181, 71, 0.2), 0 8px 32px -8px rgba(255, 181, 71, 0.15);
-}
-
-/* ── Match Score Ring ─────────────────────────────────── */
+/* ── Match Ring ─────────────────────────────────────────── */
 .match-ring {
   background: conic-gradient(
-    #4318ff calc(var(--score, 0) * 1%),
-    #1b254b 0%
+    #6366f1 calc(var(--score, 0) * 1%),
+    rgba(255, 255, 255, 0.08) 0%
   );
 }
 
-/* ── Custom Animations ────────────────────────────────── */
-@keyframes pulse-slow {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.85; transform: scale(1.03); }
+/* ── Pulse Radar Animation ──────────────────────────────── */
+@keyframes radar-pulse {
+  0% { transform: scale(0.95); opacity: 0.8; }
+  50% { transform: scale(1.08); opacity: 0.4; }
+  100% { transform: scale(0.95); opacity: 0.8; }
 }
 
-.animate-pulse-slow {
-  animation: pulse-slow 3s infinite ease-in-out;
+.animate-radar-pulse {
+  animation: radar-pulse 3s infinite ease-in-out;
 }
