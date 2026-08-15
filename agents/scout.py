@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+import pandas as pd
 from jobspy import scrape_jobs
 from playwright.async_api import async_playwright
 from bs4 import BeautifulSoup
@@ -22,7 +23,7 @@ SCOUT_JD_SYSTEM_PROMPT = (
 async def extract_jd(page, url: str) -> str:
     """3-tier cascade fallback for extracting job descriptions."""
     try:
-        await page.goto(url, wait_until="domcontentloaded", timeout=30000)
+        await page.goto(url, wait_until="domcontentloaded", timeout=25000)
     except Exception as e:
         console.print(f"[yellow]Timeout/Error loading {url}: {e}[/yellow]")
         return ""
@@ -53,9 +54,8 @@ async def extract_jd(page, url: str) -> str:
         if element:
             return element.get_text(separator="\n").strip()
 
-    console.print("[yellow]Falling back to Modal Qwen AI Gateway for JD extraction...[/yellow]")
     body_text = soup.body.get_text(separator="\n", strip=True) if soup.body else ""
-    body_text = body_text[:15000]
+    body_text = body_text[:14000]
     
     if not body_text:
         return ""
@@ -72,6 +72,8 @@ async def extract_jd(page, url: str) -> str:
         return ""
 
 async def enrich_jobs_with_playwright(jobs: list[JobMatch]) -> list[JobMatch]:
+    if not jobs:
+        return []
     async with async_playwright() as p:
         browser = await p.chromium.launch(
             headless=True,
@@ -81,61 +83,119 @@ async def enrich_jobs_with_playwright(jobs: list[JobMatch]) -> list[JobMatch]:
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         )
         
-        for i, job in enumerate(jobs):
-            console.print(f"Enriching job {i+1}/{len(jobs)}: {job.title} at {job.company}")
+        for i, job in enumerate(jobs[:10]):
+            console.print(f"Enriching job {i+1}/{min(len(jobs), 10)}: {job.title} at {job.company}")
             page = await context.new_page()
             jd = await extract_jd(page, job.url)
-            job.description = jd
+            if jd:
+                job.description = jd
             await page.close()
-            await asyncio.sleep(2)
+            await asyncio.sleep(1)
             
         await browser.close()
     return jobs
 
 def run_scout(state: ApplicationState) -> ApplicationState:
-    console.print("\n[bold blue]--- Phase 2: High-Volume Job Discovery & Requesty AI Enrichment ---[/bold blue]")
+    console.print("\n[bold blue]--- Phase 2: High-Volume Job Discovery & Requesty AI Enrichment (India & Remote) ---[/bold blue]")
+    user_id = state.get("user_id")
     target_role = state.get("target_role", "Software Engineer")
-    target_exp = state.get("target_experience_level", "")
+    target_exp = state.get("target_experience_level", "Fresher")
     
-    search_term = f"{target_exp} {target_role}".strip()
-    
-    console.print(f"Scraping jobs for: {search_term}...")
-    log_telemetry("Scout", f"Initiating job search for: {search_term}")
-    
+    # Fresher & Early Career Search Term Enhancements
+    is_fresher = any(term in target_exp.lower() for term in ["fresher", "intern", "0", "graduate", "entry", "student"])
+    if is_fresher:
+        search_terms = [
+            f"{target_role} Fresher",
+            f"{target_role} Intern",
+            f"Junior {target_role}"
+        ]
+    else:
+        search_terms = [f"{target_exp} {target_role}".strip()]
+
+    all_scraped_jobs: list[JobMatch] = []
+
+    for search_term in search_terms[:2]:
+        console.print(f"Scraping jobs for: {search_term} (India & Remote)...")
+        log_telemetry("Scout", f"Initiating high-volume scout for: '{search_term}' (India & Remote)", user_id=user_id)
+        
+        # Scrape India tech openings
+        try:
+            jobs_in = scrape_jobs(
+                site_name=["linkedin", "indeed", "glassdoor"],
+                search_term=search_term,
+                location="India",
+                results_wanted=30,
+                hours_old=48,
+                country_ecea='in'
+            )
+            if not jobs_in.empty:
+                for _, row in jobs_in.iterrows():
+                    all_scraped_jobs.append(
+                        JobMatch(
+                            id=str(row.get('id', ''))[:8] or str(uuid.uuid4())[:8],
+                            title=str(row.get('title', target_role)),
+                            company=str(row.get('company', 'Tech Company')),
+                            location=str(row.get('location', 'India')),
+                            url=str(row.get('job_url', ''))
+                        )
+                    )
+        except Exception as e:
+            console.print(f"[yellow]JobSpy India scrape note ({search_term}): {e}[/yellow]")
+
+        # Scrape Remote tech openings
+        try:
+            jobs_remote = scrape_jobs(
+                site_name=["linkedin", "indeed"],
+                search_term=search_term,
+                location="Remote",
+                results_wanted=20,
+                hours_old=48,
+                country_ecea='us'
+            )
+            if not jobs_remote.empty:
+                for _, row in jobs_remote.iterrows():
+                    all_scraped_jobs.append(
+                        JobMatch(
+                            id=str(row.get('id', ''))[:8] or str(uuid.uuid4())[:8],
+                            title=str(row.get('title', target_role)),
+                            company=str(row.get('company', 'Tech Company')),
+                            location="Remote",
+                            url=str(row.get('job_url', ''))
+                        )
+                    )
+        except Exception as e:
+            console.print(f"[yellow]JobSpy Remote scrape note ({search_term}): {e}[/yellow]")
+
+    # Deduplicate by URL
+    seen_urls = set()
+    unique_jobs = []
+    for j in all_scraped_jobs:
+        if j.url and j.url not in seen_urls:
+            seen_urls.add(j.url)
+            unique_jobs.append(j)
+
+    if not unique_jobs:
+        console.print("[yellow]No raw jobs returned from external scrapers. Existing queue preserved.[/yellow]")
+        return state
+
+    console.print(f"[green]Found {len(unique_jobs)} unique job listings. Enriching descriptions...[/green]")
+    log_telemetry("Scout", f"Discovered {len(unique_jobs)} raw job listings. Running Playwright AI enrichment...", user_id=user_id)
+
     try:
-        jobs_df = scrape_jobs(
-            site_name=["linkedin", "indeed", "glassdoor"],
-            search_term=search_term,
-            location="Remote",
-            results_wanted=100,
-            hours_old=24,
-            country_ecea='us'
-        )
-    except Exception as e:
-        console.print(f"[yellow]JobSpy scrape exception: {e}. Using queue state if populated.[/yellow]")
-        return state
-    
-    if jobs_df.empty:
-        console.print("[red]No jobs found![/red]")
-        return state
-        
-    console.print(f"[green]Found {len(jobs_df)} jobs. Enriching...[/green]")
-    log_telemetry("Scout", f"Discovered {len(jobs_df)} raw job matches. Enriching data...")
-    
-    queued_jobs = []
-    for _, row in jobs_df.head(100).iterrows():
-        job_match = JobMatch(
-            id=str(row.get('id', '')),
-            title=str(row.get('title', '')),
-            company=str(row.get('company', '')),
-            location=str(row.get('location', '')),
-            url=str(row.get('job_url', ''))
-        )
-        queued_jobs.append(job_match)
-        
-    enriched_jobs = asyncio.run(enrich_jobs_with_playwright(queued_jobs))
-    
-    state["daily_job_queue"] = enriched_jobs
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as pool:
+                enriched_jobs = pool.submit(asyncio.run, enrich_jobs_with_playwright(unique_jobs)).result()
+        else:
+            enriched_jobs = loop.run_until_complete(enrich_jobs_with_playwright(unique_jobs))
+    except RuntimeError:
+        enriched_jobs = asyncio.run(enrich_jobs_with_playwright(unique_jobs))
+    except Exception:
+        enriched_jobs = unique_jobs
+
+    existing_queue = state.get("daily_job_queue", [])
+    state["daily_job_queue"] = existing_queue + enriched_jobs
     console.print(f"[bold green]Scout Phase Complete. {len(enriched_jobs)} jobs added to queue.[/bold green]")
-    log_telemetry("Scout", f"Scout Phase Complete. {len(enriched_jobs)} high-quality jobs added to queue.")
+    log_telemetry("Scout", f"Scout Phase Complete. {len(enriched_jobs)} curated jobs added to queue.", user_id=user_id)
     return state
