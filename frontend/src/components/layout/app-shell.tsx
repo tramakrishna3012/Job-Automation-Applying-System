@@ -1,12 +1,30 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useAppStore } from "@/lib/store";
 import { Sidebar } from "./sidebar";
 import { Topbar } from "./topbar";
 import { cn } from "@/lib/utils";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { sidebarCollapsed } = useAppStore();
+  const { sidebarCollapsed, isAuthenticated } = useAppStore();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.replace("/auth");
+    }
+  }, [isAuthenticated, router]);
+
+  // Don't render protected content until authenticated
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-[#0b1437] flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-[#7551ff] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#0b1437] text-white selection:bg-[#4318ff]/40 selection:text-white">
