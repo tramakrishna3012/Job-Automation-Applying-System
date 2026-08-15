@@ -79,7 +79,7 @@ function StepIndicator({ current }: { current: number }) {
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { setProfileOnboarded } = useAppStore();
+  const { user, setUserProfile, setProfileOnboarded } = useAppStore();
   const [step, setStep] = useState(0);
   const [file, setFile] = useState<File | null>(null);
   const [role, setRole] = useState("");
@@ -106,6 +106,7 @@ export default function OnboardingPage() {
     try {
       const data = await api.onboard(formData);
       setProfile(data.profile);
+      setUserProfile(data.profile);
       setEditSkills(data.profile.skills || []);
       setStep(1);
     } catch (err: unknown) {
@@ -141,8 +142,11 @@ export default function OnboardingPage() {
     setEditSkills(editSkills.filter((s) => s !== skill));
   };
 
+  const candidateName = profile?.name && profile.name !== "Alex Mercer" ? profile.name : (user?.name || "Candidate");
+  const candidateEmail = profile?.email && profile.email !== "alex.mercer@example.com" ? profile.email : (user?.email || "candidate@example.com");
+
   return (
-    <div className="max-w-2xl mx-auto py-4 space-y-6">
+    <div className="max-w-2xl mx-auto py-2 space-y-6">
       <button
         onClick={() => router.push("/")}
         className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
@@ -152,9 +156,9 @@ export default function OnboardingPage() {
       </button>
 
       <div>
-        <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">Candidate Onboarding Wizard</h1>
+        <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">Setup Your AI Agent Profile</h2>
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-          Configure your autonomous AI agents with your master resume, career preferences, and target roles.
+          Extract master facts from your resume and customize career preferences for automated job discovery.
         </p>
       </div>
 
@@ -264,8 +268,8 @@ export default function OnboardingPage() {
                     <User className="w-6 h-6" />
                   </div>
                   <div>
-                    <h3 className="text-base font-bold text-slate-900 dark:text-white">{profile.name}</h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">{profile.email}</p>
+                    <h3 className="text-base font-bold text-slate-900 dark:text-white">{candidateName}</h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">{candidateEmail}</p>
                   </div>
                   <Badge variant="success" className="ml-auto text-[10px]">
                     AI Parsed

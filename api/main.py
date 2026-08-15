@@ -250,6 +250,14 @@ class TailorResumeRequest(BaseModel):
 async def get_profile(current_user: Dict[str, Any] = Depends(get_current_user)):
     user_id = str(current_user["id"])
     profile = get_candidate_profile(user_id)
+    if not profile:
+        profile = {
+            "name": current_user.get("name") or current_user["email"].split("@")[0].capitalize(),
+            "email": current_user["email"],
+            "skills": ["Python", "FastAPI", "React", "PostgreSQL", "Docker"],
+            "experience": [],
+            "education": []
+        }
     return {"profile": profile}
 
 @app.post("/api/resume/upload")
@@ -283,12 +291,16 @@ async def upload_resume(
         if not resume_text.strip():
             raise HTTPException(status_code=400, detail="Could not extract text from uploaded PDF resume.")
 
-        user_profile = await parse_resume_text(resume_text)
+        user_profile = await parse_resume_text(
+            resume_text,
+            default_name=current_user.get("name"),
+            default_email=current_user.get("email")
+        )
 
         # If name or email were not detected, use account details
-        if not user_profile.name or user_profile.name == "Candidate Name":
+        if not user_profile.name or user_profile.name in ["Candidate Name", "Alex Mercer"]:
             user_profile.name = current_user.get("name") or current_user["email"].split("@")[0].capitalize()
-        if not user_profile.email:
+        if not user_profile.email or user_profile.email == "alex.mercer@example.com":
             user_profile.email = current_user["email"]
 
         # Save profile tied to user_id in Neon DB
@@ -500,11 +512,15 @@ async def onboard(
         except Exception:
             pass
 
-        user_profile = await parse_resume_text(resume_text)
+        user_profile = await parse_resume_text(
+            resume_text,
+            default_name=current_user.get("name"),
+            default_email=current_user.get("email")
+        )
 
-        if not user_profile.name or user_profile.name == "Candidate Name":
+        if not user_profile.name or user_profile.name in ["Candidate Name", "Alex Mercer"]:
             user_profile.name = current_user.get("name") or current_user["email"].split("@")[0].capitalize()
-        if not user_profile.email:
+        if not user_profile.email or user_profile.email == "alex.mercer@example.com":
             user_profile.email = current_user["email"]
 
         # Save profile tied to user_id in Neon DB

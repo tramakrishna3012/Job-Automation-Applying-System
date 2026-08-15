@@ -125,16 +125,7 @@ async def async_structured_output(
         data_dict = json.loads(clean_text)
         return response_model.model_validate(data_dict)
     except Exception as e:
-        console.print(f"[bold yellow]Modal Structured Output Fallback ({target_model}): {e}[/bold yellow]")
-        if hasattr(response_model, "model_construct"):
-            return response_model.model_construct(
-                name="Alex Mercer",
-                email="alex.mercer@example.com",
-                summary="Accomplished Senior Full-Stack AI Engineer specializing in Modal Qwen3.6-35B vLLM gateways, vector search databases, and automated agent orchestration.",
-                experience=[],
-                education=[],
-                skills=["Python", "FastAPI", "React", "PostgreSQL", "pgvector", "Docker", "OpenAI SDK"]
-            )
+        console.print(f"[bold yellow]Modal Structured Output Exception ({target_model}): {e}[/bold yellow]")
         raise e
 
 async def generate_embedding(
