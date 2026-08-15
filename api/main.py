@@ -568,8 +568,67 @@ async def websocket_endpoint(websocket: WebSocket):
     finally:
         active_connections.discard(websocket)
 
-if os.path.isdir("frontend/out"):
-    app.mount("/", StaticFiles(directory="frontend/out", html=True), name="static")
+# ── Next.js Static Export Serving ────────────────────────
+# Next.js 16 generates page.html (not page/index.html), plus RSC .txt
+# data files in subdirectories. We need a custom handler to resolve all
+# these paths correctly instead of relying on StaticFiles(html=True).
+
+STATIC_DIR = "frontend/out"
+
+def _resolve_static_file(path: str) -> Optional[str]:
+    """Resolve a URL path to a file in the Next.js static export directory."""
+    # Security: prevent directory traversal
+    safe_path = os.path.normpath(path).lstrip(os.sep).lstrip("/")
+    if not safe_path or safe_path == ".":
+        return os.path.join(STATIC_DIR, "index.html")
+
+    # 1. Exact file match (static assets, images, _next/static/*, etc.)
+    exact = os.path.join(STATIC_DIR, safe_path)
+    if os.path.isfile(exact):
+        return exact
+
+    # 2. Try appending .html (Next.js 16: /connections → connections.html)
+    html_path = exact + ".html"
+    if os.path.isfile(html_path):
+        return html_path
+
+    # 3. Try appending .txt (Next.js RSC data files)
+    txt_path = exact + ".txt"
+    if os.path.isfile(txt_path):
+        return txt_path
+
+    # 4. Try directory/index.html
+    index_path = os.path.join(exact, "index.html")
+    if os.path.isfile(index_path):
+        return index_path
+
+    return None
+
+if os.path.isdir(STATIC_DIR):
+    # Mount _next directory directly for fast static asset serving (JS/CSS chunks)
+    next_static = os.path.join(STATIC_DIR, "_next")
+    if os.path.isdir(next_static):
+        app.mount("/_next", StaticFiles(directory=next_static), name="next_static")
+
+    @app.api_route("/{path:path}", methods=["GET", "HEAD"])
+    async def serve_nextjs(request: Request, path: str):
+        """Catch-all handler for Next.js static export files."""
+        # Root path or empty path → serve index.html
+        if not path or path == "":
+            index = os.path.join(STATIC_DIR, "index.html")
+            if os.path.isfile(index):
+                return FileResponse(index)
+
+        resolved = _resolve_static_file(path)
+        if resolved:
+            return FileResponse(resolved)
+
+        # SPA fallback: serve index.html for client-side routing
+        fallback = os.path.join(STATIC_DIR, "index.html")
+        if os.path.isfile(fallback):
+            return FileResponse(fallback)
+
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
 
 if __name__ == "__main__":
     uvicorn.run("api.main:app", host="0.0.0.0", port=8000, reload=True)
