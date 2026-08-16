@@ -21,6 +21,7 @@ class UserProfile(BaseModel):
     location: Optional[str] = None
     linkedin: Optional[str] = None
     github: Optional[str] = None
+    summary: Optional[str] = None
     skills: List[str]
     experience: List[Experience]
     education: List[Education]

@@ -28,6 +28,11 @@ import {
   Building,
   Calendar,
   X,
+  Copy,
+  Check,
+  AlertCircle,
+  Play,
+  Briefcase
 } from "lucide-react";
 
 function ClassificationBadge({ classification }: { classification?: string }) {
@@ -56,6 +61,10 @@ export default function EmailsPage() {
   const [selectedEmail, setSelectedEmail] = useState<EmailLog | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadMessage, setUploadMessage] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [sendingContactId, setSendingContactId] = useState<string | null>(null);
+  const [sendingAll, setSendingAll] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const { data: emails = [], isLoading: emailsLoading } = useQuery({
     queryKey: ["emails", filterDirection],
@@ -76,19 +85,58 @@ export default function EmailsPage() {
 
     setUploading(true);
     setUploadMessage(null);
+    setUploadError(null);
     const formData = new FormData();
     formData.append("file", file);
 
     try {
       const res = await api.uploadHrContacts(formData);
-      setUploadMessage(`Loaded ${res.count} HR recruiter contacts for position-tailored cold outreach.`);
-      queryClient.invalidateQueries({ queryKey: ["emails"] });
-      queryClient.invalidateQueries({ queryKey: ["hrContacts"] });
+      setUploadMessage(`Successfully ingested ${res.count} contact(s) from "${file.name}". All contact names, emails, companies, and roles are extracted.`);
+      await queryClient.invalidateQueries({ queryKey: ["emails"] });
+      await queryClient.invalidateQueries({ queryKey: ["hrContacts"] });
     } catch (err: any) {
-      setUploadMessage(err?.message || "Failed to upload HR contact list.");
+      setUploadError(err?.message || "Failed to upload and parse HR contact spreadsheet.");
     } finally {
       setUploading(false);
+      e.target.value = "";
     }
+  };
+
+  const handleSendSingle = async (contact: HRContact) => {
+    if (!contact.email) return;
+    setSendingContactId(contact.id);
+    try {
+      await api.sendHrEmail(contact.id);
+      await queryClient.invalidateQueries({ queryKey: ["emails"] });
+      await queryClient.invalidateQueries({ queryKey: ["hrContacts"] });
+      setUploadMessage(`Cold outreach email dispatched / drafted for ${contact.contact_name} (${contact.email}).`);
+    } catch (err: any) {
+      setUploadError(err?.message || `Failed to send email to ${contact.email}`);
+    } finally {
+      setSendingContactId(null);
+    }
+  };
+
+  const handleSendAll = async () => {
+    setSendingAll(true);
+    setUploadMessage(null);
+    setUploadError(null);
+    try {
+      const res = await api.sendAllHrEmails();
+      await queryClient.invalidateQueries({ queryKey: ["emails"] });
+      await queryClient.invalidateQueries({ queryKey: ["hrContacts"] });
+      setUploadMessage(`Dispatched tailored cold emails to ${res.count} contact(s).`);
+    } catch (err: any) {
+      setUploadError(err?.message || "Failed to dispatch emails to all contacts.");
+    } finally {
+      setSendingAll(false);
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const outboundCount = emails.filter((e) => e.direction === "outbound").length;
@@ -118,7 +166,7 @@ export default function EmailsPage() {
           <span>Upload Contacts (.csv / .xlsx)</span>
           <input
             type="file"
-            accept=".csv, .xlsx"
+            accept=".csv,.xlsx,.xls"
             onChange={handleFileUpload}
             disabled={uploading}
             className="hidden"
@@ -130,6 +178,13 @@ export default function EmailsPage() {
         <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-600 dark:text-emerald-400 text-xs flex items-center gap-2 animate-in fade-in">
           <FileSpreadsheet className="w-4 h-4 shrink-0" />
           <span>{uploadMessage}</span>
+        </div>
+      )}
+
+      {uploadError && (
+        <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/25 text-rose-600 dark:text-rose-400 text-xs flex items-center gap-2 animate-in fade-in">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span>{uploadError}</span>
         </div>
       )}
 
@@ -175,6 +230,14 @@ export default function EmailsPage() {
               </CardTitle>
               <CardDescription>Target position list & automated outreach campaign statuses</CardDescription>
             </div>
+            <button
+              onClick={handleSendAll}
+              disabled={sendingAll || !hrContacts.some((c) => c.email)}
+              className="px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white transition-all shadow-md flex items-center gap-2 cursor-pointer disabled:opacity-50"
+            >
+              {sendingAll ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5 fill-current" />}
+              <span>Send Outreach to All</span>
+            </button>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
@@ -182,23 +245,51 @@ export default function EmailsPage() {
                 <thead>
                   <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider text-[10px]">
                     <th className="pb-3 pr-4 pl-1">Contact Name</th>
-                    <th className="pb-3 pr-4">Email</th>
+                    <th className="pb-3 pr-4">Email Address</th>
                     <th className="pb-3 pr-4">Company</th>
                     <th className="pb-3 pr-4">Target Position</th>
-                    <th className="pb-3 text-right pr-1">Status</th>
+                    <th className="pb-3 pr-4">Status</th>
+                    <th className="pb-3 text-right pr-1">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                   {hrContacts.map((c) => (
                     <tr key={c.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
                       <td className="py-3.5 pr-4 pl-1 font-bold text-slate-900 dark:text-white">{c.contact_name}</td>
-                      <td className="py-3.5 pr-4 text-slate-500 dark:text-slate-400 font-mono">{c.email}</td>
-                      <td className="py-3.5 pr-4 text-slate-700 dark:text-slate-300">{c.company}</td>
-                      <td className="py-3.5 pr-4 text-indigo-600 dark:text-indigo-400 font-medium">{c.position || "Hiring Manager"}</td>
-                      <td className="py-3.5 text-right pr-1">
-                        <Badge variant="success" className="text-[10px]">
+                      <td className="py-3.5 pr-4">
+                        {c.email ? (
+                          <div className="flex items-center gap-1.5 font-mono text-indigo-600 dark:text-indigo-400 font-semibold">
+                            <Mail className="w-3.5 h-3.5 shrink-0 text-slate-400" />
+                            <span>{c.email}</span>
+                          </div>
+                        ) : (
+                          <span className="text-amber-500 dark:text-amber-400 italic text-[11px]">No email specified</span>
+                        )}
+                      </td>
+                      <td className="py-3.5 pr-4 text-slate-700 dark:text-slate-300 font-medium">{c.company}</td>
+                      <td className="py-3.5 pr-4 text-slate-600 dark:text-slate-400 font-medium">{c.position || "Hiring Manager"}</td>
+                      <td className="py-3.5 pr-4">
+                        <Badge
+                          variant={c.status === "sent" ? "success" : c.status === "draft" ? "purple" : "outline"}
+                          className="text-[10px] capitalize"
+                        >
                           {c.status}
                         </Badge>
+                      </td>
+                      <td className="py-3.5 text-right pr-1">
+                        <button
+                          onClick={() => handleSendSingle(c)}
+                          disabled={!c.email || sendingContactId === c.id}
+                          className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 border border-slate-200 dark:border-slate-700 transition-colors flex items-center gap-1.5 ml-auto cursor-pointer disabled:opacity-40"
+                          title="Generate and Send Cold Email"
+                        >
+                          {sendingContactId === c.id ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Send className="w-3.5 h-3.5" />
+                          )}
+                          <span>Send Email</span>
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -215,9 +306,9 @@ export default function EmailsPage() {
           <div>
             <CardTitle className="text-base text-slate-900 dark:text-white flex items-center gap-2">
               <Mail className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-              Campaign Email Logs
+              Campaign Email Logs ({emails.length})
             </CardTitle>
-            <CardDescription>Position-tailored cold outreach history and sentiment tracking</CardDescription>
+            <CardDescription>Position-tailored cold outreach history, email deliveries, and sentiment tracking</CardDescription>
           </div>
           <div className="flex items-center gap-2">
             <select
@@ -255,9 +346,10 @@ export default function EmailsPage() {
               <table className="w-full text-left text-xs">
                 <thead>
                   <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider text-[10px]">
-                    <th className="pb-3 pr-4 pl-1">Recipient / Sender</th>
+                    <th className="pb-3 pr-4 pl-1">Recipient & Email</th>
                     <th className="pb-3 pr-4">Company</th>
                     <th className="pb-3 pr-4">Subject</th>
+                    <th className="pb-3 pr-4">Delivery Status</th>
                     <th className="pb-3 pr-4">AI Sentiment</th>
                     <th className="pb-3 pr-4">Date</th>
                     <th className="pb-3 text-right pr-1">Action</th>
@@ -267,18 +359,33 @@ export default function EmailsPage() {
                   {emails.map((email) => (
                     <tr key={email.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
                       <td className="py-3.5 pr-4 pl-1 font-bold text-slate-900 dark:text-white">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={cn(
-                              "w-2 h-2 rounded-full",
-                              email.direction === "outbound" ? "bg-cyan-500 dark:bg-cyan-400" : "bg-indigo-500 dark:bg-indigo-400"
-                            )}
-                          />
-                          {email.recipient_name || email.recipient_email || "HR Manager"}
+                        <div className="flex flex-col gap-0.5">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={cn(
+                                "w-2 h-2 rounded-full shrink-0",
+                                email.direction === "outbound" ? "bg-cyan-500 dark:bg-cyan-400" : "bg-indigo-500 dark:bg-indigo-400"
+                              )}
+                            />
+                            <span>{email.recipient_name || "HR Manager"}</span>
+                          </div>
+                          {email.recipient_email && (
+                            <span className="font-mono text-[11px] text-slate-500 dark:text-slate-400 pl-4 font-normal">
+                              {email.recipient_email}
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td className="py-3.5 pr-4 text-slate-700 dark:text-slate-300">{email.company || "Company"}</td>
                       <td className="py-3.5 pr-4 text-slate-900 dark:text-white font-medium max-w-xs truncate">{email.subject}</td>
+                      <td className="py-3.5 pr-4">
+                        <Badge
+                          variant={email.status === "sent" ? "success" : email.status === "draft" ? "purple" : "outline"}
+                          className="text-[10px] capitalize"
+                        >
+                          {email.status}
+                        </Badge>
+                      </td>
                       <td className="py-3.5 pr-4">
                         <ClassificationBadge classification={email.classification} />
                       </td>
@@ -314,21 +421,44 @@ export default function EmailsPage() {
 
           {selectedEmail && (
             <div className="space-y-4 pt-2">
-              <div className="grid grid-cols-2 gap-4 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 text-xs">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 text-xs">
                 <div>
                   <span className="text-slate-500 dark:text-slate-400 block mb-0.5">Target Contact:</span>
-                  <span className="font-bold text-slate-900 dark:text-white">
-                    {selectedEmail.recipient_name || selectedEmail.recipient_email}
+                  <span className="font-bold text-slate-900 dark:text-white block">
+                    {selectedEmail.recipient_name || "HR Manager"}
                   </span>
+                  {selectedEmail.recipient_email && (
+                    <span className="font-mono text-[11px] text-indigo-600 dark:text-indigo-400">
+                      {selectedEmail.recipient_email}
+                    </span>
+                  )}
                 </div>
                 <div>
                   <span className="text-slate-500 dark:text-slate-400 block mb-0.5">Company:</span>
                   <span className="font-bold text-slate-900 dark:text-white">{selectedEmail.company || "N/A"}</span>
                 </div>
+                <div>
+                  <span className="text-slate-500 dark:text-slate-400 block mb-0.5">Status:</span>
+                  <Badge
+                    variant={selectedEmail.status === "sent" ? "success" : selectedEmail.status === "draft" ? "purple" : "outline"}
+                    className="text-[10px] capitalize"
+                  >
+                    {selectedEmail.status}
+                  </Badge>
+                </div>
               </div>
 
-              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 font-mono text-xs leading-relaxed max-h-80 overflow-y-auto whitespace-pre-wrap text-slate-700 dark:text-slate-300">
-                {selectedEmail.body}
+              <div className="relative">
+                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 font-mono text-xs leading-relaxed max-h-80 overflow-y-auto whitespace-pre-wrap text-slate-700 dark:text-slate-300">
+                  {selectedEmail.body}
+                </div>
+                <button
+                  onClick={() => copyToClipboard(selectedEmail.body || "")}
+                  className="absolute top-3 right-3 px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 shadow-sm flex items-center gap-1.5 transition-all cursor-pointer"
+                >
+                  {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copied ? "Copied" : "Copy Body"}</span>
+                </button>
               </div>
             </div>
           )}

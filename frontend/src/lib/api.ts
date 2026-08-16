@@ -210,4 +210,10 @@ export const api = {
 
   getHrContacts: () =>
     fetchJSON<{ contacts: HRContact[] }>("/hr-contacts").then((r) => r.contacts),
+
+  sendHrEmail: (contactId: string) =>
+    postJSON<{ message: string; result: any }>(`/hr-contacts/send/${contactId}`),
+
+  sendAllHrEmails: () =>
+    postJSON<{ message: string; count: number }>("/hr-contacts/send-all"),
 };

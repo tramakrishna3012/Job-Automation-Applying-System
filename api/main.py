@@ -14,17 +14,18 @@ from typing import Optional, Dict, Any, List
 
 from core.graph import app as graph_app
 from core.state import ApplicationState, UserProfile, Education, Experience, JobMatch
-from agents.onboarding import parse_resume_text
+from agents.onboarding import parse_resume_text, extract_text_from_pdf_bytes
 from agents.editor import tailor_for_job, generate_resume_html
 from agents.visibility import LINKEDIN_BRANDING_SYSTEM_PROMPT, GITHUB_BRANDING_SYSTEM_PROMPT
 from agents.tracker import classify_email_intent
 from core.ai_gateway import async_chat_completion
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from agents.communicator import ingest_hr_list
+from agents.communicator import ingest_hr_list, send_cold_email
 from core.db import (
     get_db_connection, log_telemetry, get_emails, register_telemetry_listener,
     create_user, get_user_by_email, get_user_by_id, verify_password, create_jwt_token, decode_jwt_token,
-    save_candidate_profile_vector, get_candidate_profile, save_hr_contacts_batch, get_hr_contacts
+    save_candidate_profile_vector, get_candidate_profile, save_hr_contacts_batch, get_hr_contacts,
+    get_hr_contact_by_id, update_hr_contact_status
 )
 
 active_connections = set()
@@ -271,25 +272,16 @@ async def upload_resume(
     """Uploads, parses with AI, and stores candidate master resume."""
     user_id = str(current_user["id"])
     try:
-        fd, temp_pdf_path = tempfile.mkstemp(suffix=".pdf")
-        os.close(fd)
-        with open(temp_pdf_path, "wb") as f:
-            f.write(await file.read())
-
-        resume_text = ""
-        with pdfplumber.open(temp_pdf_path) as pdf:
-            for page in pdf.pages:
-                text = page.extract_text()
-                if text:
-                    resume_text += text + "\n"
-
-        try:
-            os.remove(temp_pdf_path)
-        except Exception:
-            pass
+        file_bytes = await file.read()
+        filename = (file.filename or "resume.pdf").lower()
+        
+        if filename.endswith(".pdf"):
+            resume_text = extract_text_from_pdf_bytes(file_bytes)
+        else:
+            resume_text = file_bytes.decode("utf-8", errors="ignore")
 
         if not resume_text.strip():
-            raise HTTPException(status_code=400, detail="Could not extract text from uploaded PDF resume.")
+            raise HTTPException(status_code=400, detail="Could not extract text from uploaded resume. Please ensure the file contains readable text.")
 
         user_profile = await parse_resume_text(
             resume_text,
@@ -495,22 +487,16 @@ async def onboard(
 ):
     user_id = str(current_user["id"])
     try:
-        fd, temp_pdf_path = tempfile.mkstemp(suffix=".pdf")
-        os.close(fd)
-        with open(temp_pdf_path, "wb") as f:
-            f.write(await file.read())
+        file_bytes = await file.read()
+        filename = (file.filename or "resume.pdf").lower()
+        
+        if filename.endswith(".pdf"):
+            resume_text = extract_text_from_pdf_bytes(file_bytes)
+        else:
+            resume_text = file_bytes.decode("utf-8", errors="ignore")
 
-        resume_text = ""
-        with pdfplumber.open(temp_pdf_path) as pdf:
-            for page in pdf.pages:
-                text = page.extract_text()
-                if text:
-                    resume_text += text + "\n"
-
-        try:
-            os.remove(temp_pdf_path)
-        except Exception:
-            pass
+        if not resume_text.strip():
+            raise HTTPException(status_code=400, detail="Could not extract text from uploaded resume. Please ensure the file contains readable text.")
 
         user_profile = await parse_resume_text(
             resume_text,
@@ -756,6 +742,87 @@ async def list_hr_contacts(current_user: Dict[str, Any] = Depends(get_current_us
     user_id = str(current_user["id"])
     contacts = get_hr_contacts(user_id)
     return {"contacts": contacts}
+
+@app.post("/api/hr-contacts/send/{contact_id}")
+async def send_single_hr_email(
+    contact_id: str,
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    user_id = str(current_user["id"])
+    contact = get_hr_contact_by_id(user_id, contact_id)
+    if not contact:
+        raise HTTPException(status_code=404, detail="HR Contact not found")
+    
+    email_address = (contact.get("email") or "").strip()
+    if not email_address:
+        raise HTTPException(status_code=400, detail="This contact does not have a valid email address.")
+
+    user_profile = get_candidate_profile(user_id) or UserProfile(
+        name=current_user.get("name") or "Candidate",
+        email=current_user.get("email") or "",
+        skills=["Python", "FastAPI", "React", "AI Engineering", "PostgreSQL"],
+        experience=[],
+        education=[]
+    )
+    state = user_active_states.get(user_id, {
+        "user_id": user_id,
+        "user_profile": user_profile,
+        "target_role": "Software / AI Engineer",
+        "target_experience_level": "fresher"
+    })
+    state["user_id"] = user_id
+    state["user_profile"] = user_profile
+
+    result = send_cold_email(
+        contact_name=contact.get("contact_name") or "Hiring Manager",
+        email=email_address,
+        company=contact.get("company") or "Target Company",
+        state=state,
+        contact_id=contact_id
+    )
+    return {"message": "Cold outreach email processed successfully", "result": result}
+
+@app.post("/api/hr-contacts/send-all")
+async def send_all_hr_emails_endpoint(
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    user_id = str(current_user["id"])
+    contacts = get_hr_contacts(user_id)
+    valid_contacts = [c for c in contacts if (c.get("email") or "").strip()]
+    if not valid_contacts:
+        raise HTTPException(status_code=400, detail="No HR contacts with valid email addresses found.")
+
+    user_profile = get_candidate_profile(user_id) or UserProfile(
+        name=current_user.get("name") or "Candidate",
+        email=current_user.get("email") or "",
+        skills=["Python", "FastAPI", "React", "AI Engineering", "PostgreSQL"],
+        experience=[],
+        education=[]
+    )
+    state = user_active_states.get(user_id, {
+        "user_id": user_id,
+        "user_profile": user_profile,
+        "target_role": "Software / AI Engineer",
+        "target_experience_level": "fresher"
+    })
+    state["user_id"] = user_id
+    state["user_profile"] = user_profile
+
+    processed = 0
+    for c in valid_contacts:
+        try:
+            send_cold_email(
+                contact_name=c.get("contact_name") or "Hiring Manager",
+                email=c["email"].strip(),
+                company=c.get("company") or "Target Company",
+                state=state,
+                contact_id=str(c.get("id", ""))
+            )
+            processed += 1
+        except Exception:
+            pass
+
+    return {"message": f"Dispatched cold email outreach campaign for {processed} contacts", "count": processed}
 
 @app.get("/api/emails")
 async def get_emails_endpoint(

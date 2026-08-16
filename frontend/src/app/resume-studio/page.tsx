@@ -83,7 +83,7 @@ export default function ResumeStudioPage() {
   // Upload mutation
   const handleUploadResume = async () => {
     if (!uploadFile) {
-      setUploadError("Please select a PDF resume file.");
+      setUploadError("Please select a resume file (PDF or text).");
       return;
     }
     setUploadLoading(true);
@@ -94,9 +94,14 @@ export default function ResumeStudioPage() {
     formData.append("template_style", selectedTemplate);
 
     try {
-      await api.uploadResume(formData);
-      queryClient.invalidateQueries({ queryKey: ["resumePreview"] });
-      queryClient.invalidateQueries({ queryKey: ["profile"] });
+      const res = await api.uploadResume(formData);
+      queryClient.setQueryData(["resumePreview", selectedTemplate], {
+        profile: res.profile,
+        html: res.html,
+      });
+      await queryClient.invalidateQueries({ queryKey: ["resumePreview"] });
+      await queryClient.invalidateQueries({ queryKey: ["profile"] });
+      setViewMode("master");
       setUploadModalOpen(false);
       setUploadFile(null);
       setUploadLoading(false);
@@ -459,15 +464,15 @@ export default function ResumeStudioPage() {
                 <p className="text-xs font-bold text-slate-900 dark:text-white text-center">
                   {uploadFile ? uploadFile.name : "Click to select PDF or drag and drop"}
                 </p>
-                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Accepts standard PDF master resume</p>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Accepts standard PDF or TXT master resume</p>
                 {uploadFile && (
                   <Badge variant="success" className="mt-3 text-[10px]">
-                    ✓ PDF Selected ({(uploadFile.size / 1024).toFixed(1)} KB)
+                    ✓ File Selected ({(uploadFile.size / 1024).toFixed(1)} KB)
                   </Badge>
                 )}
                 <input
                   type="file"
-                  accept="application/pdf"
+                  accept=".pdf,application/pdf,.txt,text/plain"
                   onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
                   className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
                 />

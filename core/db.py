@@ -1,4 +1,5 @@
 import json
+import re
 import psycopg2
 import bcrypt
 import jwt
@@ -71,7 +72,7 @@ def init_db():
                 cur.execute("""
                     CREATE TABLE IF NOT EXISTS candidate_profiles (
                         id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-                        user_id UUID REFERENCES users(id) ON DELETE CASCADE UNIQUE,
+                        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
                         user_email TEXT NOT NULL,
                         profile_json JSONB NOT NULL,
                         skills_text TEXT NOT NULL,
@@ -79,6 +80,7 @@ def init_db():
                     )
                 """)
                 cur.execute("ALTER TABLE candidate_profiles ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES users(id) ON DELETE CASCADE;")
+                cur.execute("CREATE UNIQUE INDEX IF NOT EXISTS candidate_profiles_user_id_idx ON candidate_profiles(user_id);")
                 
                 # 5. Job Description Vector Embeddings
                 cur.execute("""
@@ -266,19 +268,42 @@ def save_candidate_profile_vector(user_id: str, email: str, profile_json: dict, 
     if conn:
         try:
             with conn.cursor() as cur:
+                # Ensure unique index exists on user_id
+                cur.execute("CREATE UNIQUE INDEX IF NOT EXISTS candidate_profiles_user_id_idx ON candidate_profiles(user_id);")
                 vector_str = f"[{','.join(map(str, embedding))}]" if embedding else None
-                cur.execute("""
-                    INSERT INTO candidate_profiles (user_id, user_email, profile_json, skills_text, embedding)
-                    VALUES (%s::uuid, %s, %s, %s, %s::vector)
-                    ON CONFLICT (user_id) DO UPDATE 
-                    SET profile_json = EXCLUDED.profile_json,
-                        skills_text = EXCLUDED.skills_text,
-                        embedding = EXCLUDED.embedding,
-                        user_email = EXCLUDED.user_email
-                """, (user_id, email, json.dumps(profile_json), skills_text, vector_str))
+                try:
+                    cur.execute("""
+                        INSERT INTO candidate_profiles (user_id, user_email, profile_json, skills_text, embedding)
+                        VALUES (%s::uuid, %s, %s, %s, %s::vector)
+                        ON CONFLICT (user_id) DO UPDATE 
+                        SET profile_json = EXCLUDED.profile_json,
+                            skills_text = EXCLUDED.skills_text,
+                            embedding = EXCLUDED.embedding,
+                            user_email = EXCLUDED.user_email
+                    """, (user_id, email, json.dumps(profile_json), skills_text, vector_str))
+                except Exception:
+                    # Fallback upsert if constraint differs
+                    cur.execute("SELECT id FROM candidate_profiles WHERE user_id = %s::uuid OR LOWER(user_email) = %s", (user_id, email.lower().strip()))
+                    existing = cur.fetchone()
+                    if existing:
+                        cur.execute("""
+                            UPDATE candidate_profiles 
+                            SET user_id = %s::uuid,
+                                user_email = %s,
+                                profile_json = %s,
+                                skills_text = %s,
+                                embedding = %s::vector
+                            WHERE id = %s
+                        """, (user_id, email, json.dumps(profile_json), skills_text, vector_str, existing["id"]))
+                    else:
+                        cur.execute("""
+                            INSERT INTO candidate_profiles (user_id, user_email, profile_json, skills_text, embedding)
+                            VALUES (%s::uuid, %s, %s, %s, %s::vector)
+                        """, (user_id, email, json.dumps(profile_json), skills_text, vector_str))
             console.print(f"[green]Stored candidate profile for user {user_id}[/green]")
         except Exception as e:
             console.print(f"[red]Failed to save candidate vector profile: {e}[/red]")
+            raise e
         finally:
             conn.close()
 
@@ -291,8 +316,19 @@ def get_candidate_profile(user_id: str) -> Optional[dict]:
         with conn.cursor() as cur:
             cur.execute("SELECT profile_json FROM candidate_profiles WHERE user_id = %s::uuid", (user_id,))
             row = cur.fetchone()
+            if row and row.get("profile_json"):
+                return row["profile_json"]
+            # Fallback check by matching user email from users table
+            cur.execute("""
+                SELECT cp.profile_json 
+                FROM candidate_profiles cp 
+                JOIN users u ON LOWER(cp.user_email) = LOWER(u.email) 
+                WHERE u.id = %s::uuid
+            """, (user_id,))
+            row = cur.fetchone()
             return row["profile_json"] if row else None
-    except Exception:
+    except Exception as e:
+        console.print(f"[red]Failed to get candidate profile: {e}[/red]")
         return None
     finally:
         conn.close()
@@ -351,17 +387,83 @@ def get_emails(user_id: Optional[str] = None, direction: Optional[str] = None, c
     finally:
         conn.close()
 
+def normalize_contact_record(c: Dict[str, Any]) -> Dict[str, str]:
+    """Normalizes any contact dictionary extracted from CSV/Excel into standardized fields."""
+    name = None
+    email = None
+    company = None
+    position = None
+    draft = str(c.get("Draft") or c.get("draft") or c.get("email_draft") or "").strip()
+
+    for k, v in c.items():
+        if v is None:
+            continue
+        val_str = str(v).strip()
+        if not val_str or val_str.lower() in ["nan", "none", "null"]:
+            continue
+        
+        k_clean = str(k).lower().replace("_", " ").replace("-", " ").replace(".", " ").strip()
+
+        # Match email
+        if not email and ("email" in k_clean or "mail" in k_clean or "@" in val_str):
+            m = re.search(r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+', val_str)
+            if m:
+                email = m.group(0)
+
+        # Match name
+        elif not name and ("name" in k_clean or "contact" in k_clean or "person" in k_clean or "lead" in k_clean or "recruiter" in k_clean):
+            if "@" not in val_str:
+                name = val_str
+
+        # Match company
+        elif not company and ("company" in k_clean or "org" in k_clean or "firm" in k_clean or "employer" in k_clean or "client" in k_clean or "business" in k_clean):
+            company = val_str
+
+        # Match position / designation / role
+        elif not position and ("position" in k_clean or "role" in k_clean or "title" in k_clean or "designation" in k_clean or "post" in k_clean):
+            position = val_str
+
+    # Fallback scan: if email is still None, scan all values in the dict for an email pattern
+    if not email:
+        for v in c.values():
+            if v is not None:
+                m = re.search(r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+', str(v))
+                if m:
+                    email = m.group(0)
+                    break
+
+    # Fallback name if missing
+    if not name:
+        if company:
+            name = f"{company} Hiring Team"
+        else:
+            name = "Hiring Manager"
+
+    company = company or "Target Company"
+    position = position or "Hiring Manager"
+    email = email or ""
+
+    return {
+        "contact_name": name,
+        "email": email,
+        "company": company,
+        "position": position,
+        "draft": draft
+    }
+
 def save_hr_contacts_batch(user_id: str, contacts: List[Dict[str, Any]]):
-    """Inserts a batch of HR contacts scoped to user_id."""
+    """Inserts a batch of HR contacts scoped to user_id, intelligently extracting fields from any dict keys."""
     conn = get_db_connection()
     if conn:
         try:
             with conn.cursor() as cur:
                 for c in contacts:
+                    norm = normalize_contact_record(c)
                     cur.execute("""
                         INSERT INTO hr_contacts (user_id, contact_name, email, company, position, status, email_draft)
                         VALUES (%s::uuid, %s, %s, %s, %s, %s, %s)
-                    """, (user_id, c.get("Contact Name", "HR Lead"), c.get("Email", ""), c.get("Company", ""), c.get("Position", "Hiring Manager"), "pending", c.get("Draft", "")))
+                    """, (user_id, norm["contact_name"], norm["email"], norm["company"], norm["position"], "pending", norm["draft"]))
+            console.print(f"[green]Saved {len(contacts)} HR contacts for user {user_id}[/green]")
         except Exception as e:
             console.print(f"[red]Failed to save HR contacts: {e}[/red]")
         finally:
@@ -380,6 +482,37 @@ def get_hr_contacts(user_id: str) -> List[Dict[str, Any]]:
         return []
     finally:
         conn.close()
+
+def get_hr_contact_by_id(user_id: str, contact_id: str) -> Optional[Dict[str, Any]]:
+    """Retrieves a single HR contact for user_id."""
+    conn = get_db_connection()
+    if not conn:
+        return None
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM hr_contacts WHERE user_id = %s::uuid AND id = %s::uuid", (user_id, contact_id))
+            row = cur.fetchone()
+            return dict(row) if row else None
+    except Exception:
+        return None
+    finally:
+        conn.close()
+
+def update_hr_contact_status(user_id: str, contact_id: str, status: str = "sent", email_draft: str = ""):
+    """Updates status and email draft for an HR contact by ID."""
+    conn = get_db_connection()
+    if conn:
+        try:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    UPDATE hr_contacts 
+                    SET status = %s, email_draft = %s 
+                    WHERE user_id = %s::uuid AND id = %s::uuid
+                """, (status, email_draft, user_id, contact_id))
+        except Exception as e:
+            console.print(f"[red]Failed to update HR contact status: {e}[/red]")
+        finally:
+            conn.close()
 
 def is_url_scraped(url: str) -> bool:
     """Checks if a job URL has already been processed."""

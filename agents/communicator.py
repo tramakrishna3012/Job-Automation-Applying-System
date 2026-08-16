@@ -6,7 +6,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from core.state import ApplicationState
 from core.ai_gateway import async_chat_completion
-from core.db import log_email, log_telemetry, get_hr_contacts
+from core.db import log_email, log_telemetry, get_hr_contacts, normalize_contact_record, update_hr_contact_status
 from core.gmail import send_gmail
 
 console = Console()
@@ -23,15 +23,29 @@ COLD_EMAIL_SYSTEM_PROMPT = (
 )
 
 def ingest_hr_list(file_path: str) -> pd.DataFrame:
-    """Reads an HR contact list from Excel or CSV."""
+    """Reads and normalizes an HR contact list from Excel (.xlsx, .xls) or CSV (.csv)."""
     try:
-        if file_path.endswith('.xlsx'):
-            return pd.read_excel(file_path)
-        elif file_path.endswith('.csv'):
-            return pd.read_csv(file_path)
+        df = pd.DataFrame()
+        lower_path = file_path.lower()
+        if lower_path.endswith(('.xlsx', '.xls')):
+            df = pd.read_excel(file_path)
+        elif lower_path.endswith('.csv'):
+            try:
+                df = pd.read_csv(file_path)
+            except Exception:
+                df = pd.read_csv(file_path, sep=None, engine='python')
         else:
-            console.print("[red]Unsupported file format for HR list. Use .xlsx or .csv[/red]")
-            return pd.DataFrame()
+            try:
+                df = pd.read_csv(file_path)
+            except Exception:
+                df = pd.read_excel(file_path)
+
+        if df.empty:
+            return df
+
+        # Clean string columns: strip whitespace
+        df = df.map(lambda x: x.strip() if isinstance(x, str) else x)
+        return df
     except Exception as e:
         console.print(f"[red]Failed to read HR list: {e}[/red]")
         return pd.DataFrame()
@@ -57,7 +71,7 @@ async def generate_personalized_cold_email(contact_name: str, company: str, stat
         temperature=0.7
     )
 
-def send_cold_email(contact_name: str, email: str, company: str, state: ApplicationState):
+def send_cold_email(contact_name: str, email: str, company: str, state: ApplicationState, contact_id: str = ""):
     """Generates personalized cold email and sends via Gmail API, logging outcome to DB."""
     user_id = state.get("user_id")
     try:
@@ -73,9 +87,14 @@ def send_cold_email(contact_name: str, email: str, company: str, state: Applicat
             email_body = asyncio.run(generate_personalized_cold_email(contact_name, company, state))
 
         target_role = state.get("target_role", "Software Engineer")
-        subject = f"Application / Expression of Interest: {target_role} - {state.get('user_profile').name if state.get('user_profile') else 'Candidate'}"
+        candidate_name = state.get('user_profile').name if (state.get('user_profile') and hasattr(state.get('user_profile'), 'name')) else 'Candidate'
+        subject = f"Application / Expression of Interest: {target_role} - {candidate_name}"
 
-        console.print(f"[cyan]📧 Generating cold email to {contact_name} ({email}) at {company}...[/cyan]")
+        try:
+            console.print(f"[cyan][Outreach] Generating cold email to {contact_name} ({email}) at {company}...[/cyan]")
+        except Exception:
+            pass
+
         sent_success = send_gmail(to_email=email, subject=subject, body=email_body)
 
         status = "sent" if sent_success else "draft"
@@ -89,9 +108,18 @@ def send_cold_email(contact_name: str, email: str, company: str, state: Applicat
             status=status,
             user_id=user_id
         )
+
+        if user_id and contact_id:
+            update_hr_contact_status(user_id, contact_id, status=status, email_draft=email_body)
+
         log_telemetry("Communicator", f"Cold outreach email ({status}) prepared for {contact_name} at {company}", user_id=user_id)
+        return {"status": status, "subject": subject, "body": email_body}
     except Exception as e:
-        console.print(f"[red]Failed to generate or send cold email: {e}[/red]")
+        try:
+            console.print(f"[red]Failed to generate or send cold email: {e}[/red]")
+        except Exception:
+            pass
+        return {"status": "failed", "error": str(e)}
 
 def run_communicator(state: ApplicationState) -> ApplicationState:
     console.print("\n[bold blue]--- Phase 5: Intelligent Cold Outreach & HR Campaigns ---[/bold blue]")
@@ -103,23 +131,30 @@ def run_communicator(state: ApplicationState) -> ApplicationState:
     hr_list_path = state.get("hr_list_path")
     if hr_list_path and os.path.exists(hr_list_path):
         df = ingest_hr_list(hr_list_path)
-        if not df.empty and 'Email' in df.columns and 'Company' in df.columns:
+        if not df.empty:
             for _, row in df.iterrows():
-                contacts_to_schedule.append({
-                    "name": row.get("Contact Name", "Hiring Lead"),
-                    "email": str(row["Email"]).strip(),
-                    "company": str(row["Company"]).strip()
-                })
+                norm = normalize_contact_record(row.to_dict())
+                if norm.get("email"):
+                    contacts_to_schedule.append({
+                        "id": "",
+                        "name": norm["contact_name"],
+                        "email": norm["email"],
+                        "company": norm["company"],
+                        "position": norm["position"]
+                    })
 
-    # 2. If no uploaded file, query auto-discovered contacts from Jobcode/Scout
+    # 2. If no uploaded file, query auto-discovered contacts from database
     if not contacts_to_schedule and user_id:
         db_contacts = get_hr_contacts(user_id)
-        for c in db_contacts[:15]:
-            if c.get("email"):
+        for c in db_contacts[:25]:
+            email_val = (c.get("email") or "").strip()
+            if email_val:
                 contacts_to_schedule.append({
-                    "name": c.get("contact_name", "Hiring Manager"),
-                    "email": c["email"],
-                    "company": c.get("company", "Tech Company")
+                    "id": str(c.get("id", "")),
+                    "name": c.get("contact_name") or "Hiring Manager",
+                    "email": email_val,
+                    "company": c.get("company") or "Tech Company",
+                    "position": c.get("position") or "Hiring Manager"
                 })
 
     if contacts_to_schedule:
@@ -136,13 +171,13 @@ def run_communicator(state: ApplicationState) -> ApplicationState:
             try:
                 # Dispatch first email immediately, pace subsequent emails with anti-spam delays
                 if idx == 0:
-                    send_cold_email(contact["name"], contact["email"], contact["company"], state)
+                    send_cold_email(contact["name"], contact["email"], contact["company"], state, contact["id"])
                 else:
                     scheduler.add_job(
                         send_cold_email,
                         'interval',
                         minutes=5 * (idx + 1),
-                        args=[contact["name"], contact["email"], contact["company"], state],
+                        args=[contact["name"], contact["email"], contact["company"], state, contact["id"]],
                         max_instances=1
                     )
             except Exception as e:

@@ -67,8 +67,11 @@ async def async_chat_completion(
         content = response.choices[0].message.content
         return content.strip() if content else ""
     except Exception as e:
-        console.print(f"[bold yellow]Modal Qwen Gateway Notice ({target_model}): {e}. Using resilient fallback.[/bold yellow]")
-        # Resilient fallback output if Modal endpoint is starting or unreachable
+        console.print(f"[bold yellow]AI Gateway Notice ({target_model}): {e}[/bold yellow]")
+        if response_format:
+            # For structured responses, re-raise so fallback parser can execute
+            raise e
+        # Resilient fallback output for free-text / email classification if AI endpoint is unreachable
         user_query = messages[-1].get("content", "") if messages else ""
         if "LinkedIn" in str(system_prompt) or "LinkedIn" in user_query:
             return "🚀 Thrilled to showcase our autonomous job application agent system powered by Modal Qwen3.6-35B AI Gateway & Neon pgvector! Streamlining career growth with cutting-edge AI orchestration. #AI #SoftwareEngineering #Automation"
@@ -83,7 +86,7 @@ async def async_chat_completion(
             else:
                 return "Pending"
         else:
-            return f"Processed automated response via Modal Qwen3.6 AI Gateway for query: {user_query[:50]}"
+            return f"Processed automated response via AI Gateway for query: {user_query[:50]}"
 
 async def async_structured_output(
     system_prompt: str,
